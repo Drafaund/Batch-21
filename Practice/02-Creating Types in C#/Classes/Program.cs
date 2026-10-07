@@ -28,7 +28,7 @@ namespace Classes
             // DemonstrateConstants();
             
             // Methods - behavior and functionality
-            DemonstrateMethods();
+            // DemonstrateMethods();
             
             // Constructors - how objects come to life
             // DemonstrateConstructors();
@@ -46,7 +46,7 @@ namespace Classes
             // DemonstrateStaticFeatures();
             
             // Primary constructors (C# 12 feature)
-            // DemonstratePrimaryConstructors();
+            DemonstratePrimaryConstructors();
             
             // Partial classes and methods
             // DemonstratePartialClasses();
