@@ -1,14 +1,33 @@
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices.Marshalling;
+
 var queue = new Queue<string>();
 
 Enqueue("A");
 Enqueue("B");
+EnqueueVip("C");
+Process();
 Process();
 Process();
 
 void Enqueue(string value)
 {
-    queue.Enqueue(value); // Ini fungsi dari objek queue, bukan yang kita definisikan sendiri
+    queue.Enqueue(value);
     Console.WriteLine($"Queued {value}");
+}
+
+void EnqueueVip(string value)
+{
+    var items = new Queue<string>();
+    items.Enqueue(value);
+
+    foreach (var item in queue)
+    {
+        items.Enqueue(item);
+    }
+
+    queue = items;
+    Console.WriteLine($"VIP Queued: {value}");
 }
 
 void Process()
@@ -18,31 +37,5 @@ void Process()
         Console.WriteLine("Queue is empty");
     }
     Console.WriteLine($"Processed {queue.Dequeue()}");
-
-
 }
 
-// var queue = new Queue<string>();
-
-
-// Enqueue_func("A");
-// Enqueue_func("B");
-// Process();
-// Process();
-
-// void Enqueue_func(string val)
-// {
-//     queue.Enqueue(val);
-//     Console.WriteLine($"Queued {val}");
-// }
-
-// void Process()
-// {
-//     if (queue.Count == 0)
-//     {
-//         Console.WriteLine("Queue is empty");
-//         return;
-//     }
-
-//     Console.WriteLine($"Processed {queue.Dequeue()}");
-// }
