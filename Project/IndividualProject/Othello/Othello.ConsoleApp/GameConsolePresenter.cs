@@ -1,4 +1,5 @@
 using Othello.Core;
+using Spectre.Console;
 
 namespace Othello.ConsoleApp;
 
@@ -32,12 +33,33 @@ public sealed class GameConsolePresenter(IBoardRenderer renderer, IBoardReader b
     private void HandleGameStarted() => _renderer.Render(_board);
     private void HandleMovePlayed(Move move)
     {
-        Console.WriteLine($"{move.Color} plays {ToNotation(move.Target)}, flipped {move.Flipped.Count}");
+        var color = move.Color == DiscColor.Black ? "black on white" : "white on black";
+        AnsiConsole.MarkupLine(
+            $"[{color}]{move.Color}[/] plays [yellow]{ToNotation(move.Target)}[/], " +
+            $"flipped [green]{move.Flipped.Count}[/]");
         _renderer.Render(_board);
     }
-    private void HandleScoreChanged(Score score) => Console.WriteLine($"Score: Black {score.Black} - White {score.White}");
-    private void HandleTurnChanged(DiscColor color) => Console.WriteLine($"{color} turn.");
-    private void HandleTurnSkipped(DiscColor color) => Console.WriteLine($"{color} has no valid move and is skipped.");
-    private void HandleGameOver(GameResult result) => Console.WriteLine($"Game over: {result}.");
+    private void HandleScoreChanged(Score score)
+    {
+        AnsiConsole.MarkupLine(
+            $"Score: [white on black] Black {score.Black} [/] - " +
+            $"[black on white] White {score.White} [/]");
+    }
+    private void HandleTurnChanged(DiscColor color)
+    {
+        var style = color == DiscColor.Black ? "white on black" : "black on white";
+        AnsiConsole.MarkupLine($"[{style}] {color} turn [/]");
+    }
+    private void HandleTurnSkipped(DiscColor color) =>
+        AnsiConsole.MarkupLine($"[yellow]{color} has no valid move and is skipped.[/]");
+    private void HandleGameOver(GameResult result)
+    {
+        AnsiConsole.Write(new Panel($"[bold yellow]Game over: {result}[/]")
+        {
+            Header = new PanelHeader("Othello"),
+            Border = BoxBorder.Double
+        });
+        AnsiConsole.WriteLine();
+    }
     private static string ToNotation(Position position) => $"{(char)('A' + position.Col)}{position.Row + 1}";
 }

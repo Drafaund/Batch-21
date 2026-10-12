@@ -1,4 +1,5 @@
 using Othello.Core;
+using Spectre.Console;
 
 namespace Othello.ConsoleApp;
 
@@ -8,24 +9,42 @@ public static class Program
 
     public static void Main()
     {
+        AnsiConsole.Write(new Panel("[bold green]Welcome to Othello[/]")
+        {
+            Border = BoxBorder.Rounded
+        });
+        AnsiConsole.WriteLine();
+
         var game = BuildGame();
         var presenter = new GameConsolePresenter(new ConsoleBoardRenderer(), _board!);
         presenter.Subscribe(game);
         try
         {
             var start = game.Start();
-            if (!start.IsSuccess()) Console.WriteLine($"Unable to start: {start.Failure}");
+            if (!start.IsSuccess())
+            {
+                AnsiConsole.MarkupLine($"[red]Unable to start:[/] {start.Failure}");
+            }
+
             while (!game.IsGameOver())
             {
-                Console.Write("Enter a move (for example C4), or q to quit: ");
-                var input = Console.ReadLine();
+                var input = AnsiConsole.Prompt(
+                    new TextPrompt<string>("Enter a move (for example [yellow]C4[/]), or [yellow]q[/] to quit:")
+                        .AllowEmpty());
                 if (string.Equals(input, "q", StringComparison.OrdinalIgnoreCase)) break;
                 try
                 {
                     var result = game.TryPlayMove(ParsePosition(input ?? string.Empty));
-                    if (!result.IsSuccess()) Console.WriteLine($"Move rejected: {result.Failure}");
+                    if (!result.IsSuccess())
+                    {
+                        AnsiConsole.MarkupLine($"[red]Move rejected:[/] {result.Failure}");
+                    }
                 }
-                catch (FormatException) { Console.WriteLine("Invalid position. Use a column A-H and row 1-8."); }
+                catch (FormatException)
+                {
+                    AnsiConsole.MarkupLine(
+                        "[red]Invalid position.[/] Use a column [yellow]A-H[/] and row [yellow]1-8[/].");
+                }
             }
         }
         finally { presenter.Unsubscribe(game); }
@@ -51,9 +70,18 @@ public static class Program
 
     private static int ReadMode()
     {
-        Console.WriteLine("1 Human vs Greedy (default), 2 Human vs Random, 3 Human vs Human, 4 AI vs AI");
-        Console.Write("Mode: ");
-        return int.TryParse(Console.ReadLine(), out var mode) && mode is >= 1 and <= 4 ? mode : 1;
+        return AnsiConsole.Prompt(
+            new SelectionPrompt<int>()
+                .Title("Select a game mode:")
+                .AddChoices(1, 2, 3, 4)
+                .UseConverter(mode => mode switch
+                {
+                    1 => "Human vs Greedy AI",
+                    2 => "Human vs Random AI",
+                    3 => "Human vs Human",
+                    4 => "AI vs AI",
+                    _ => "Unknown"
+                }));
     }
 
     private static Position ParsePosition(string input)

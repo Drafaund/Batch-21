@@ -1,4 +1,5 @@
 using Othello.Core;
+using Spectre.Console;
 
 namespace Othello.ConsoleApp;
 
@@ -6,21 +7,37 @@ public sealed class ConsoleBoardRenderer : IBoardRenderer
 {
     public void Render(IBoardReader board)
     {
-        Console.WriteLine("  A B C D E F G H");
+        ArgumentNullException.ThrowIfNull(board);
+
+        var table = new Table
+        {
+            Border = TableBorder.Rounded,
+            ShowRowSeparators = true
+        };
+        table.AddColumn(new TableColumn("[bold] [/]").Centered());
+
+        for (var col = 0; col < board.Size; col++)
+        {
+            var label = ((char)('A' + col)).ToString();
+            table.AddColumn(new TableColumn($"[bold]{label}[/]").Centered());
+        }
+
         for (var row = 0; row < board.Size; row++)
         {
-            Console.Write($"{row + 1} ");
+            var cells = new List<string> { $"[bold]{row + 1}[/]" };
             for (var col = 0; col < board.Size; col++)
             {
-                var symbol = board.GetColor(new Position(row, col)) switch
+                var cell = board.GetColor(new Position(row, col)) switch
                 {
-                    DiscColor.Black => 'X',
-                    DiscColor.White => 'O',
-                    _ => '.'
+                    DiscColor.Black => "[white on black] X [/]",
+                    DiscColor.White => "[black on white] O [/]",
+                    _ => "[grey].[/]"
                 };
-                Console.Write($"{symbol} ");
+                cells.Add(cell);
             }
-            Console.WriteLine();
+            table.AddRow(cells.ToArray());
         }
+
+        AnsiConsole.Write(table);
     }
 }
