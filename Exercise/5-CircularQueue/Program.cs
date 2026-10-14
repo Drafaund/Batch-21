@@ -14,7 +14,9 @@ void Log(int val)
 {
     if (count == Capacity)
     {
-        Console.WriteLine("Buffer Full");
+        buffer[head] = val;
+        head = (head + 1) % Capacity;
+        Console.WriteLine($"Overwritten oldest with {val}");
         return;
     }
 

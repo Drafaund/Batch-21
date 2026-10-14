@@ -3,7 +3,9 @@ Node? tail = null;
 
 Append(5);
 Append(10);
+Append(15);
 Print();
+PrintReverse();
 
 void Append(int val)
 {
@@ -15,6 +17,7 @@ void Append(int val)
     }
     else
     {
+        node.Previous = tail;
         tail!.Next = node;
         tail = node;
     }
@@ -31,10 +34,21 @@ void Print()
     Console.WriteLine($"Sequence: {string.Join(" -> ", values)}");
 }
 
+void PrintReverse()
+{
+    var values = new List<int>();
+    for (var current = tail; current != null; current = current.Previous)
+    {
+        values.Add(current.Value);
+    }
+    Console.WriteLine($"Reversed: {string.Join(" -> ", values)}");
+}
+
 class Node
 {
     public int Value;
     public Node? Next;
+    public Node? Previous;
 
     public Node(int value)
     {
