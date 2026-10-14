@@ -1,0 +1,164 @@
+classDiagram
+    direction TB
+
+    %% OthelloCore only. GameManager is the single public entry point and holds all game logic (rules are fixed, KISS).
+    %% All other classes are data holders; only the automated players keep behaviour (Strategy), because that part really varies.
+    %% Naming: PascalCase for types/methods/properties, private fields use _camelCase.
+    %% Association = plain line (--) with multiplicity. Composition = filled diamond (*--). Dependency = dashed open arrow (..>).
+    %% Lines are drawn only for structural relations (collections, optional parts, composition, injected objects).
+    %% Single-valued attributes of enum or value types (PieceColor, Position, ...) are shown as attributes only, to keep the diagram clean.
+    %% Visibility: Cell.Piece and Board state are public read, internal write: only GameManager changes board state. Empty cell = Piece is null.
+    %% Players are injected through the GameManager constructor (DIP): GameManager depends on the Player abstraction, not on concrete players.
+    %% IAutoPlayer contract: candidates is never empty and the result is one of candidates; GameManager throws InvalidOperationException otherwise.
+    %% Event order: Start -> GameStarted, ScoreChanged, TurnChanged(first). After a move -> MovePlayed, ScoreChanged, then GameOver or TurnChanged(next);
+    %% if the next player must pass -> TurnSkipped(that player), then TurnChanged(player who moves again).
+
+    class GameManager {
+        +Board Board
+        +PieceColor CurrentTurn
+        +GameResult? Result
+        -Player _blackPlayer
+        -Player _whitePlayer
+        -IReadOnlyList~Direction~ _directions
+        -bool _isStarted
+        -bool _isProcessing
+        +event Action GameStarted
+        +event Action~Move~ MovePlayed
+        +event Action~Score~ ScoreChanged
+        +event Action~PieceColor~ TurnChanged
+        +event Action~PieceColor~ TurnSkipped
+        +event Action~GameResult~ GameOver
+        +GameManager(Player blackPlayer, Player whitePlayer)
+        +IsGameOver() bool
+        +Start() MoveResult
+        +TryPlayMove(Position) MoveResult
+        +GetValidMoves() IReadOnlyList~Position~
+        +GetScore() Score
+        -PlayAutoTurns(List~Move~) void
+        -ApplyMove(Position, PieceColor) Move
+        -AdvanceTurn() void
+        -FindValidMoves(PieceColor) List~Move~
+        -GetFlips(Position, PieceColor) List~Position~
+        -HasValidMove(PieceColor) bool
+        -TryGetResult(out GameResult) bool
+        -IsInside(Position) bool
+    }
+
+    class Board {
+        +int Size
+        +IReadOnlyList~Cell~ Cells
+    }
+
+    class Cell {
+        +Position Position
+        +Piece? Piece
+    }
+
+    class Piece {
+        +PieceColor Color
+    }
+
+    class Player {
+        <<abstract>>
+        +PieceColor Color
+        +string Name
+    }
+
+    class HumanPlayer
+
+    class IAutoPlayer {
+        <<interface>>
+        +ChooseMove(IReadOnlyList~Move~) Move
+    }
+
+    class RandomAIPlayer {
+        -Random _random
+        +ChooseMove(IReadOnlyList~Move~) Move
+    }
+
+    class GreedyAIPlayer {
+        +ChooseMove(IReadOnlyList~Move~) Move
+    }
+
+    class MoveResult {
+        <<record>>
+        +MoveFailureReason Failure
+        +IReadOnlyList~Move~ Moves
+        +bool IsSuccess
+    }
+
+    class Move {
+        <<record>>
+        +Position Target
+        +PieceColor Color
+        +IReadOnlyList~Position~ Flipped
+    }
+
+    class Position {
+        <<readonly struct>>
+        +int Row
+        +int Col
+    }
+
+    class Direction {
+        <<readonly struct>>
+        +int DRow
+        +int DCol
+    }
+
+    class Score {
+        <<readonly struct>>
+        +int Black
+        +int White
+    }
+
+    class PieceColor {
+        <<enumeration>>
+        Black
+        White
+    }
+
+    class GameResult {
+        <<enumeration>>
+        BlackWins
+        WhiteWins
+        Draw
+    }
+
+    class MoveFailureReason {
+        <<enumeration>>
+        None
+        NotStarted
+        AlreadyStarted
+        GameOver
+        OutOfBounds
+        CellOccupied
+        NoPiecesFlipped
+        ReentrantCall
+    }
+
+    %% ===== GameManager (hub) =====
+    GameManager "1" *-- "1" Board : Board
+    GameManager "1" -- "2" Player : _blackPlayer, _whitePlayer
+    GameManager "1" -- "8" Direction : _directions
+    GameManager ..> IAutoPlayer : plays automated turns
+    GameManager ..> MoveResult : returns
+    GameManager ..> Move : creates
+    GameManager ..> Score : returns
+
+    %% ===== Board structure (part-of) =====
+    Board "1" *-- "64" Cell : Cells
+    Cell "1" *-- "0..1" Piece : Piece
+
+    %% ===== Players (LSP: only automated players have ChooseMove) =====
+    Player <|-- HumanPlayer
+    Player <|-- RandomAIPlayer
+    Player <|-- GreedyAIPlayer
+    IAutoPlayer <|.. RandomAIPlayer
+    IAutoPlayer <|.. GreedyAIPlayer
+
+    %% ===== Move data =====
+    MoveResult "1" -- "0..*" Move : Moves
+    Move "1" -- "1..*" Position : Flipped
+
+    note for Cell "Public read, internal write: only GameManager<br>changes board state. Empty cell = Piece is null."
