@@ -1,42 +1,41 @@
-﻿Generate(105);
+Generate(105);
 
 void Generate(int number)
 {
-    for(int i = 1 ; i <= number; i++)
+    for (var i = 1; i <= number; i++)
     {
-        if (i % 3 == 0 && i % 5 == 0 && i % 7 == 0)
+        var result = string.Empty;
+
+        if (i % 3 == 0)
         {
-            Console.WriteLine("foobarjazz");
-        }
-        
-        else if (i % 3 == 0 && i % 5 == 0)
-        {
-            Console.WriteLine("foobar");
-        }
-        else if (i % 5 == 0 && i % 7 == 0)
-        {
-            Console.WriteLine("barjazz");
+            result += "foo";
         }
 
-        else if(i % 3 == 0 && i % 7 == 0)
+        if (i % 4 == 0)
         {
-            Console.WriteLine("foojazz");
-        }
-        else if (i % 5 == 0)
-        {
-            Console.WriteLine("bar");
+            result += "baz";
         }
 
-        else if(i % 3 ==0)
+        if (i % 5 == 0)
         {
-            Console.WriteLine("foo");
+            result += "bar";
         }
 
-
-        else
+        if (i % 7 == 0)
         {
-            Console.WriteLine(i);
+            result += "jazz";
         }
+
+        if (i % 9 == 0)
+        {
+            result += "huzz";
+        }
+
+        if (result.Length == 0)
+        {
+            result = i.ToString();
+        }
+
+        Console.WriteLine(result);
     }
-    
 }
