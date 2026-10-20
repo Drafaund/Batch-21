@@ -1,6 +1,6 @@
 namespace Battleship.Core;
 
-public interface IPlayer : IShotStrategy
+public interface IPlayer
 {
     int Id { get; }
     string Name { get; set; }

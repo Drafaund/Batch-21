@@ -14,7 +14,4 @@ public abstract class Player : IPlayer
     public string Name { get; set; }
     public IBoard Board { get; set; }
     public IFleet Fleet { get; set; }
-
-    public abstract Coordinate SelectTarget();
-    public abstract void ReceiveResult(Coordinate target, ShotResult result);
 }

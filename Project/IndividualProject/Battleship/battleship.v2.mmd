@@ -1,13 +1,16 @@
 classDiagram
-    GameController ..> IPlayer : manages two players and asks for target
+    GameController ..> IPlayer : manages two players
+    GameController ..> IShotStrategy : asks each player for a target
     GameController ..> IBoard : reads and updates
     GameController ..> IFleet : reads and updates
 
-    IShotStrategy <|-- IPlayer
     IPlayer <|.. Player
     Player <|-- HumanPlayer
     Player <|-- RandomAIPlayer
     Player <|-- HuntTargetAIPlayer
+    IShotStrategy <|.. HumanPlayer
+    IShotStrategy <|.. RandomAIPlayer
+    IShotStrategy <|.. HuntTargetAIPlayer
     HumanPlayer ..> ICoordinateInput : reads input from
 
     Player *-- IBoard
@@ -24,6 +27,8 @@ classDiagram
     class GameController {
         +IPlayer Player1
         +IPlayer Player2
+        -IShotStrategy _strategy1
+        -IShotStrategy _strategy2
         -IPlayer _currentPlayer
         +GameState State
         -int _turnNumber
@@ -31,7 +36,7 @@ classDiagram
         +event Action~IPlayer, Coordinate, ShotResult~ OnShotResolved
         +event Action~IPlayer~ OnGameEnded
 
-        +GameController(IPlayer player1, IPlayer player2)
+        +GameController(IPlayer player1, IShotStrategy strategy1, IPlayer player2, IShotStrategy strategy2)
 
         +GetCurrentPlayer() IPlayer
         +GetState() GameState
@@ -68,8 +73,6 @@ classDiagram
         +IFleet Fleet
 
         #Player(int id, string name, IBoard board, IFleet fleet)
-        +SelectTarget() Coordinate*
-        +ReceiveResult(Coordinate target, ShotResult result) void*
     }
     class HumanPlayer {
         -ICoordinateInput _input
