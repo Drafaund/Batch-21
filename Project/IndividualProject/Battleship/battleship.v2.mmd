@@ -1,0 +1,196 @@
+classDiagram
+    GameController ..> IPlayer : manages two players and asks for target
+    GameController ..> IBoard : reads and updates
+    GameController ..> IFleet : reads and updates
+
+    IShotStrategy <|-- IPlayer
+    IPlayer <|.. Player
+    Player <|-- HumanPlayer
+    Player <|-- RandomAIPlayer
+    Player <|-- HuntTargetAIPlayer
+    HumanPlayer ..> ICoordinateInput : reads input from
+
+    Player *-- IBoard
+    Player *-- IFleet
+
+    IBoard <|.. Board
+    Board *-- ICell
+    ICell <|.. Cell
+    Cell o-- IShip : occupied by
+    IFleet <|.. Fleet
+    Fleet *-- IShip
+    IShip <|.. Ship
+
+    class GameController {
+        +IPlayer Player1
+        +IPlayer Player2
+        -IPlayer _currentPlayer
+        +GameState State
+        -int _turnNumber
+
+        +event Action~IPlayer, Coordinate, ShotResult~ OnShotResolved
+        +event Action~IPlayer~ OnGameEnded
+
+        +GameController(IPlayer player1, IPlayer player2)
+
+        +GetCurrentPlayer() IPlayer
+        +GetState() GameState
+        +GetBoard(IPlayer player) IBoard
+        +GetFleet(IPlayer player) IFleet
+        +GetRemainingShips(IPlayer player) int
+        +StartGame() void
+        +ValidatePlaceShip(IPlayer player, IShip ship, Coordinate start, Orientation orientation) bool
+        +PlaceShip(IPlayer player, IShip ship, Coordinate start, Orientation orientation) bool
+        +PlaceShipsRandomly(IPlayer player, IEnumerable~IShip~ ships, Random random) void
+        +TakeTurn() ShotResult
+        +ProcessShot(IPlayer shooter, Coordinate target) ShotResult
+        +SwitchTurn() void
+        +CheckWinner() IPlayer?
+        +EndGame(IPlayer winner) void
+    }
+    class IShotStrategy {
+        <<interface>>
+        +SelectTarget() Coordinate
+        +ReceiveResult(Coordinate target, ShotResult result) void
+    }
+    class IPlayer {
+        <<interface>>
+        +int Id : readonly
+        +string Name
+        +IBoard Board
+        +IFleet Fleet
+    }
+    class Player {
+        <<abstract>>
+        +int Id : readonly
+        +string Name
+        +IBoard Board
+        +IFleet Fleet
+
+        #Player(int id, string name, IBoard board, IFleet fleet)
+        +SelectTarget() Coordinate*
+        +ReceiveResult(Coordinate target, ShotResult result) void*
+    }
+    class HumanPlayer {
+        -ICoordinateInput _input
+
+        +HumanPlayer(int id, string name, IBoard board, IFleet fleet, ICoordinateInput input)
+        +SelectTarget() Coordinate
+        +ReceiveResult(Coordinate target, ShotResult result) void
+    }
+    class RandomAIPlayer {
+        -Random _random
+        -HashSet~Coordinate~ _firedShots
+
+        +RandomAIPlayer(int id, string name, IBoard board, IFleet fleet, Random random)
+        +SelectTarget() Coordinate
+        +ReceiveResult(Coordinate target, ShotResult result) void
+    }
+    class HuntTargetAIPlayer {
+        -Random _random
+        -HashSet~Coordinate~ _firedShots
+        -Queue~Coordinate~ _targetQueue
+
+        +HuntTargetAIPlayer(int id, string name, IBoard board, IFleet fleet, Random random)
+        +SelectTarget() Coordinate
+        +ReceiveResult(Coordinate target, ShotResult result) void
+    }
+    class ICoordinateInput {
+        <<interface>>
+        +ReadCoordinate() Coordinate
+    }
+    class IBoard {
+        <<interface>>
+        +int BoardSize
+        +ICell[,] Cells
+    }
+    class Board {
+        +int BoardSize : readonly
+        +ICell[,] Cells
+
+        +Board()
+    }
+    note for Board "Cells is indexed Cells[x, y]: X = column, Y = row"
+    class ICell {
+        <<interface>>
+        +Coordinate Position : readonly
+        +CellState State
+        +IShip? OccupyingShip
+        +bool IsOccupied : readonly
+    }
+    class Cell {
+        +Coordinate Position : readonly
+        +CellState State
+        +IShip? OccupyingShip
+        +bool IsOccupied : readonly
+
+        +Cell(Coordinate position)
+    }
+    class IFleet {
+        <<interface>>
+        +List~IShip~ Ships
+    }
+    class Fleet {
+        +List~IShip~ Ships
+
+        +Fleet()
+    }
+    class IShip {
+        <<interface>>
+        +ShipType Type : readonly
+        +int Length : readonly
+        +Orientation Orientation
+        +List~Coordinate~ Positions
+        +int HitCount
+        +bool IsSunk : readonly
+    }
+    class Ship {
+        +ShipType Type : readonly
+        +int Length : readonly
+        +Orientation Orientation
+        +List~Coordinate~ Positions
+        +int HitCount
+        +bool IsSunk : readonly
+
+        +Ship(ShipType type)
+    }
+    class Coordinate {
+        <<struct>>
+        +int X : readonly
+        +int Y : readonly
+
+        +Coordinate(int x, int y)
+    }
+    class ShipType {
+        <<enumeration>>
+        Carrier,
+        Battleship,
+        Cruiser,
+        Submarine,
+        Destroyer,
+    }
+    class Orientation {
+        <<enumeration>>
+        Vertical,
+        Horizontal,
+    }
+    class GameState {
+        <<enumeration>>
+        Setup,
+        InProgress,
+        Finished,
+    }
+    class ShotResult {
+        <<enumeration>>
+        Hit,
+        Miss,
+        Invalid,
+        Sunk,
+    }
+    class CellState {
+        <<enumeration>>
+        Empty,
+        Ship,
+        Hit,
+        Miss,
+    }

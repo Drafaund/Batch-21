@@ -1,0 +1,27 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+
+# Test and coverage output
+TestResults/
+coverage/
+*.coverage
+*.coveragexml
+
+# Logs (Serilog file sink, M4)
+[Ll]ogs/
+*.log
+
+# Draw.io backups
+*.drawio.bkp
+.$*.bkp
+
+# Frontend (M6)
+node_modules/
