@@ -1,4 +1,5 @@
 using Battleship.Core;
+using Spectre.Console;
 
 namespace Battleship.ConsoleApp;
 
@@ -52,14 +53,14 @@ public class GameRunner
         {
             if (_hotSeat)
             {
-                HandOver($"{participant.Player.Name}, place your ships. {Other(participant).Player.Name}, look away.");
+                HandOver($"[bold]{Markup.Escape(participant.Player.Name)}[/], place your ships. [bold]{Markup.Escape(Other(participant).Player.Name)}[/], look away.");
             }
 
             _placement.Place(participant);
 
             if (_hotSeat)
             {
-                _screen.WaitForEnter("Press Enter to hide your board...");
+                _screen.WaitForEnter("Press [green]Enter[/] to hide your board...");
                 _screen.Clear();
             }
         }
@@ -102,11 +103,7 @@ public class GameRunner
 
         if (_hotSeat)
         {
-            HandOver($"{participant.Player.Name}, it is your turn. {Other(participant).Player.Name}, look away.");
-        }
-        else
-        {
-            _screen.WriteLine(new string('-', 40));
+            HandOver($"[bold]{Markup.Escape(participant.Player.Name)}[/], it is your turn. [bold]{Markup.Escape(Other(participant).Player.Name)}[/], look away.");
         }
 
         ShowTurnView(participant);
@@ -123,14 +120,15 @@ public class GameRunner
         if (_hotSeat && result != ShotResult.Invalid && _controller.GetState() == GameState.InProgress)
         {
             ShowTurnView(participant);
-            _screen.WaitForEnter("Press Enter to end your turn...");
+            _screen.WaitForEnter("Press [green]Enter[/] to end your turn...");
         }
     }
 
     private void ShowTurnView(Participant participant)
     {
         var other = Other(participant);
-        _screen.WriteLine($"{participant.Player.Name}'s turn. Ships left: you {_controller.GetRemainingShips(participant.Player)}, enemy {_controller.GetRemainingShips(other.Player)}.");
+        _screen.Write(new Rule($"[bold]{Markup.Escape(participant.Player.Name)}[/]'s turn").LeftJustified());
+        _screen.WriteLine($"Ships left: you [green]{_controller.GetRemainingShips(participant.Player)}[/], enemy [red]{_controller.GetRemainingShips(other.Player)}[/]");
         _renderer.ShowPlayerView(BoardOf(participant), BoardOf(other));
     }
 
@@ -144,7 +142,7 @@ public class GameRunner
     private void HandOver(string message)
     {
         _screen.Clear();
-        _screen.WaitForEnter($"{message} Press Enter when ready...");
+        _screen.WaitForEnter($"{message} Press [green]Enter[/] when ready...");
         _screen.Clear();
     }
 

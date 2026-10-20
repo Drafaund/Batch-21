@@ -1,12 +1,14 @@
 using Battleship.Core;
+using Spectre.Console;
 
 namespace Battleship.ConsoleApp;
 
-/// <summary>Draws boards as text. A board drawn without ships shows only hits and misses.</summary>
+/// <summary>Draws boards with Spectre.Console. A board drawn without ships shows only hits and misses.</summary>
 public class BoardRenderer
 {
-    private const string ColumnGap = "    ";
-    private const string Legend = "Legend: ~ water   # ship   X hit   o miss";
+    // Two boards side by side need about 95 columns; narrower terminals get them stacked.
+    private const int SideBySideMinWidth = 100;
+    private const string Legend = "[blue]~[/] water   [bold white]#[/] ship   [bold red]X[/] hit   [yellow]o[/] miss";
 
     private readonly ConsoleScreen _screen;
 
@@ -19,63 +21,73 @@ public class BoardRenderer
     /// <summary>The player's own fleet (with ships) next to the enemy board (hits and misses only).</summary>
     public void ShowPlayerView(IBoard ownBoard, IBoard enemyBoard)
     {
-        ShowSideBySide("YOUR FLEET", Render(ownBoard, showShips: true), "TARGET BOARD", Render(enemyBoard, showShips: false));
+        ShowSideBySide(
+            BuildTable(ownBoard, "Your fleet", showShips: true),
+            BuildTable(enemyBoard, "Target board", showShips: false));
     }
 
     /// <summary>Two fleets, both with ships. Only for bot games and the end of a game.</summary>
     public void ShowFleets(string leftTitle, IBoard left, string rightTitle, IBoard right)
     {
-        ShowSideBySide(leftTitle, Render(left, showShips: true), rightTitle, Render(right, showShips: true));
+        ShowSideBySide(
+            BuildTable(left, Markup.Escape(leftTitle), showShips: true),
+            BuildTable(right, Markup.Escape(rightTitle), showShips: true));
     }
 
     public void ShowFleet(string title, IBoard board)
     {
-        _screen.WriteLine(title);
-        foreach (var line in Render(board, showShips: true))
+        _screen.Write(BuildTable(board, title, showShips: true));
+        _screen.WriteLine(Legend);
+    }
+
+    private void ShowSideBySide(Table left, Table right)
+    {
+        if (_screen.Width >= SideBySideMinWidth)
         {
-            _screen.WriteLine(line);
+            var grid = new Grid().AddColumn().AddColumn();
+            grid.AddRow(left, right);
+            _screen.Write(grid);
+        }
+        else
+        {
+            _screen.Write(left);
+            _screen.Write(right);
         }
 
         _screen.WriteLine(Legend);
     }
 
-    private void ShowSideBySide(string leftTitle, IReadOnlyList<string> left, string rightTitle, IReadOnlyList<string> right)
+    private static Table BuildTable(IBoard board, string title, bool showShips)
     {
-        var width = left.Max(line => line.Length);
-        _screen.WriteLine(leftTitle.PadRight(width) + ColumnGap + rightTitle);
-        for (var i = 0; i < left.Count; i++)
+        var table = new Table().Border(TableBorder.Rounded).Title($"[bold]{title}[/]");
+        table.AddColumn(new TableColumn(string.Empty));
+        for (var column = 1; column <= board.BoardSize; column++)
         {
-            _screen.WriteLine(left[i].PadRight(width) + ColumnGap + right[i]);
+            table.AddColumn(new TableColumn($"[grey]{column}[/]").Centered());
         }
 
-        _screen.WriteLine(Legend);
-    }
-
-    private static List<string> Render(IBoard board, bool showShips)
-    {
-        var size = board.BoardSize;
-        var lines = new List<string>
+        for (var y = 0; y < board.BoardSize; y++)
         {
-            "    " + string.Concat(Enumerable.Range(1, size).Select(column => column.ToString().PadRight(3))).TrimEnd(),
-        };
+            var row = new List<string> { $"[grey]{(char)('A' + y)}[/]" };
+            for (var x = 0; x < board.BoardSize; x++)
+            {
+                row.Add(Symbol(board.Cells[x, y], showShips));
+            }
 
-        for (var y = 0; y < size; y++)
-        {
-            var cells = Enumerable.Range(0, size).Select(x => $"{Symbol(board.Cells[x, y], showShips)}  ");
-            lines.Add($" {(char)('A' + y)}  " + string.Concat(cells).TrimEnd());
+            table.AddRow(row.ToArray());
         }
 
-        return lines;
+        return table;
     }
 
-    private static char Symbol(ICell cell, bool showShips)
+    private static string Symbol(ICell cell, bool showShips)
     {
         return cell.State switch
         {
-            CellState.Hit => 'X',
-            CellState.Miss => 'o',
-            CellState.Ship when showShips => '#',
-            _ => '~',
+            CellState.Hit => "[bold red]X[/]",
+            CellState.Miss => "[yellow]o[/]",
+            CellState.Ship when showShips => "[bold white]#[/]",
+            _ => "[blue]~[/]",
         };
     }
 }

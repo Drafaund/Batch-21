@@ -1,44 +1,42 @@
+using Spectre.Console;
+using Spectre.Console.Rendering;
+
 namespace Battleship.ConsoleApp;
 
-/// <summary>The only place that talks to <see cref="Console"/>: writing, reading lines, clearing, pausing.</summary>
+/// <summary>The only place that talks to the terminal (through Spectre.Console): writing, prompting, clearing, pausing.</summary>
 public class ConsoleScreen
 {
-    private readonly TextReader _input;
-    private readonly TextWriter _output;
-    private readonly bool _canClear;
+    private readonly IAnsiConsole _console;
     private readonly TimeSpan _botDelay;
 
-    /// <param name="canClear">False when the output is redirected, where clearing the screen would fail.</param>
     /// <param name="botDelay">Pause after a bot move so a bot game can be watched; zero for no pause.</param>
-    public ConsoleScreen(TextReader input, TextWriter output, bool canClear, TimeSpan botDelay)
+    public ConsoleScreen(IAnsiConsole console, TimeSpan botDelay)
     {
-        ArgumentNullException.ThrowIfNull(input);
-        ArgumentNullException.ThrowIfNull(output);
-        _input = input;
-        _output = output;
-        _canClear = canClear;
+        ArgumentNullException.ThrowIfNull(console);
+        _console = console;
         _botDelay = botDelay;
     }
 
-    public void Write(string text) => _output.Write(text);
+    public int Width => _console.Profile.Width;
 
-    public void WriteLine(string text = "") => _output.WriteLine(text);
+    /// <summary>Writes a line of Spectre markup. Escape any user text first with <see cref="Markup.Escape"/>.</summary>
+    public void WriteLine(string markup = "") => _console.MarkupLine(markup);
 
-    /// <exception cref="EndOfStreamException">The input has ended (for example piped input ran out).</exception>
-    public string ReadLine() => _input.ReadLine() ?? throw new EndOfStreamException("Input ended.");
+    public void Write(IRenderable renderable) => _console.Write(renderable);
+
+    public T Prompt<T>(IPrompt<T> prompt) => _console.Prompt(prompt);
 
     public void Clear()
     {
-        if (_canClear)
+        if (_console.Profile.Out.IsTerminal)
         {
-            Console.Clear();
+            _console.Clear();
         }
     }
 
-    public void WaitForEnter(string message)
+    public void WaitForEnter(string markup)
     {
-        Write(message);
-        ReadLine();
+        _console.Prompt(new TextPrompt<string>(markup).AllowEmpty());
     }
 
     public void PauseForBot()
