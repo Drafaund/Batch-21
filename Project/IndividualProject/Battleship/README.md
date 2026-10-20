@@ -70,12 +70,12 @@ The class diagram is in [battleship.v2.mmd](battleship.v2.mmd). It covers `Battl
 dotnet test Battleship.Tests
 ```
 
-161 test cases (129 test methods; theories run several cases each), all passing:
+177 test cases (142 test methods; theories run several cases each), all passing:
 
 | Area | Test methods |
 |---|---|
 | `Ship`, `Cell`, `Board`, `Fleet` | 20 |
-| `GameController` (setup, random placement, shots, turns, end of game) | 76 |
+| `GameController` (setup, random placement, shots, turns, end of game) | 89 |
 | `HumanPlayer`, `RandomAIPlayer`, `HuntTargetAIPlayer` | 27 |
 | Full AI games (Random vs Random, Hunt vs Hunt, mixed) and the bot comparison | 6 |
 

@@ -4,8 +4,9 @@ namespace Battleship.Core;
 public partial class GameController
 {
     /// <summary>
-    /// Plays one shot for the current player. A valid shot passes the turn, or ends the game when it sinks
-    /// the last enemy ship; an <see cref="ShotResult.Invalid"/> shot keeps the turn.
+    /// Plays one shot for the current player, asking that player's strategy for the target.
+    /// A valid shot passes the turn, or ends the game when it sinks the last enemy ship;
+    /// an <see cref="ShotResult.Invalid"/> shot keeps the turn.
     /// </summary>
     /// <returns>The result of the shot.</returns>
     /// <exception cref="InvalidOperationException">The game is not in progress.</exception>
@@ -13,10 +14,24 @@ public partial class GameController
     {
         EnsureInProgress();
 
-        var shooter = _currentPlayer;
-        var strategy = ReferenceEquals(shooter, Player1) ? _strategy1 : _strategy2;
+        return TakeTurn(CurrentStrategy.SelectTarget());
+    }
 
-        var target = strategy.SelectTarget();
+    /// <summary>
+    /// Plays one shot for the current player at a target that comes from outside, such as a web request.
+    /// It does everything <see cref="TakeTurn()"/> does after the target is known: resolves the shot,
+    /// tells the current player's strategy the result, then ends the game or passes the turn.
+    /// </summary>
+    /// <param name="target">The cell to fire at; it may be outside the board, which gives <see cref="ShotResult.Invalid"/>.</param>
+    /// <returns>The result of the shot.</returns>
+    /// <exception cref="InvalidOperationException">The game is not in progress.</exception>
+    public ShotResult TakeTurn(Coordinate target)
+    {
+        EnsureInProgress();
+
+        var shooter = _currentPlayer;
+        var strategy = CurrentStrategy;
+
         var result = ProcessShot(shooter, target);
         strategy.ReceiveResult(target, result);
 
@@ -61,6 +76,8 @@ public partial class GameController
         _currentPlayer = GetOpponent(_currentPlayer);
         _turnNumber++;
     }
+
+    private IShotStrategy CurrentStrategy => ReferenceEquals(_currentPlayer, Player1) ? _strategy1 : _strategy2;
 
     private static ShotResult ResolveShot(IBoard board, Coordinate target)
     {
