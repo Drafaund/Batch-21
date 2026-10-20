@@ -16,15 +16,21 @@ From this folder (`Battleship`):
 dotnet run --project Battleship.Console
 ```
 
-### Web API (work in progress)
+### Web version (work in progress)
 
-The API lets one player play a game against a bot over HTTP. The React front end and online games between two people are planned.
+One player can play a game against a bot in the browser. Online games between two people are planned.
 
 ```
+# terminal 1, from this folder
 dotnet run --project Battleship.Api
+
+# terminal 2
+cd battleship-web
+npm install
+npm run dev
 ```
 
-It listens on http://localhost:5080, and in the Development environment the interactive documentation is at http://localhost:5080/swagger. The endpoints, JSON shapes, and rules are described in [WEB_DESIGN.md](WEB_DESIGN.md). Games live in memory and are lost when the server stops.
+Open http://localhost:5173. The API listens on http://localhost:5080, and in the Development environment its interactive documentation is at http://localhost:5080/swagger. The endpoints, JSON shapes, and rules are described in [WEB_DESIGN.md](WEB_DESIGN.md), and the front end is described in [battleship-web/README.md](battleship-web/README.md). Games live in memory and are lost when the server stops.
 
 ## Game modes
 
@@ -67,7 +73,8 @@ Battleship/
 │   ├── Games/               GameSession, GameStore, OnlinePlayer, ViewMapper, error handling
 │   └── Endpoints/           the REST endpoints
 ├── Battleship.Tests/        xUnit tests for Battleship.Core
-└── Battleship.Api.Tests/    integration tests for the API (WebApplicationFactory)
+├── Battleship.Api.Tests/    integration tests for the API (WebApplicationFactory)
+└── battleship-web/          React front end (Vite, TypeScript), with Vitest and Playwright tests
 ```
 
 ## Design
@@ -119,6 +126,16 @@ dotnet test Battleship.Api.Tests
 
 Coverage of `Battleship.Api`: 97.5% of lines and 92.6% of branches.
 
+### Front end tests
+
+```
+cd battleship-web
+npm test        # component and unit tests (Vitest)
+npm run e2e     # browser tests (Playwright) against the real API
+```
+
+119 Vitest tests cover the API client, the saved session, the placement preview, every component and screen, the `useGame` hook, and whole games against a scripted server. Six Playwright tests play full games against both bots in a real browser, place ships by hand, rotate with the R key, resume after a reload, and start over.
+
 ## Planned
 
-The rest of the web version: a React front end, then online games between two people with real-time updates (SignalR), then hosting. See [WEB_DESIGN.md](WEB_DESIGN.md).
+The rest of the web version: online games between two people with real-time updates (SignalR), then hosting. See [WEB_DESIGN.md](WEB_DESIGN.md).
