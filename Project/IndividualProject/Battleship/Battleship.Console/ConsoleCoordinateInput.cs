@@ -9,6 +9,7 @@ public class ConsoleCoordinateInput : ICoordinateInput
     private readonly ConsoleScreen _screen;
     private readonly int _boardSize;
 
+    /// <summary>Creates an input that prompts on <paramref name="screen"/> for a board of <paramref name="boardSize"/> cells per side.</summary>
     public ConsoleCoordinateInput(ConsoleScreen screen, int boardSize)
     {
         ArgumentNullException.ThrowIfNull(screen);
@@ -16,6 +17,7 @@ public class ConsoleCoordinateInput : ICoordinateInput
         _boardSize = boardSize;
     }
 
+    /// <inheritdoc />
     public Coordinate ReadCoordinate()
     {
         var lastLetter = (char)('A' + _boardSize - 1);

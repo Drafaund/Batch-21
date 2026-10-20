@@ -32,6 +32,7 @@ public static class CoordinateFormat
         return true;
     }
 
+    /// <summary>Formats a coordinate as row letter and column number, such as <c>D-4</c>.</summary>
     public static string Format(Coordinate coordinate)
     {
         return coordinate.Y is >= 0 and < 26

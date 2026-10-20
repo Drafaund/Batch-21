@@ -25,12 +25,12 @@ classDiagram
     IShip <|.. Ship
 
     class GameController {
-        +IPlayer Player1
-        +IPlayer Player2
+        +IPlayer Player1 : readonly
+        +IPlayer Player2 : readonly
         -IShotStrategy _strategy1
         -IShotStrategy _strategy2
         -IPlayer _currentPlayer
-        +GameState State
+        +GameState State : readonly
         -int _turnNumber
 
         +event Action~IPlayer, Coordinate, ShotResult~ OnShotResolved

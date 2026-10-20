@@ -12,6 +12,7 @@ public class BoardRenderer
 
     private readonly ConsoleScreen _screen;
 
+    /// <summary>Creates a renderer that draws on <paramref name="screen"/>.</summary>
     public BoardRenderer(ConsoleScreen screen)
     {
         ArgumentNullException.ThrowIfNull(screen);
@@ -34,6 +35,7 @@ public class BoardRenderer
             BuildTable(right, Markup.Escape(rightTitle), showShips: true));
     }
 
+    /// <summary>Draws one board with its ships, for ship placement.</summary>
     public void ShowFleet(string title, IBoard board)
     {
         _screen.Write(BuildTable(board, title, showShips: true));

@@ -5,6 +5,7 @@ public class HumanPlayer : Player, IShotStrategy
 {
     private readonly ICoordinateInput _input;
 
+    /// <summary>Creates a human player that reads its targets from <paramref name="input"/>.</summary>
     public HumanPlayer(int id, string name, IBoard board, IFleet fleet, ICoordinateInput input)
         : base(id, name, board, fleet)
     {

@@ -15,6 +15,7 @@ public class GameRunner
     private readonly bool _hotSeat;
     private readonly bool _botsOnly;
 
+    /// <summary>Creates a runner for one game.</summary>
     public GameRunner(
         GameController controller,
         Participant first,
@@ -39,6 +40,7 @@ public class GameRunner
         _botsOnly = !first.IsHuman && !second.IsHuman;
     }
 
+    /// <summary>Places the fleets, plays turns until there is a winner, then shows the final boards.</summary>
     public void Run()
     {
         PlaceFleets();

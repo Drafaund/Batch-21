@@ -6,6 +6,7 @@ public class RandomAIPlayer : Player, IShotStrategy
     private readonly Random _random;
     private readonly HashSet<Coordinate> _firedShots = new();
 
+    /// <summary>Creates a bot that picks targets with <paramref name="random"/>; pass a seeded <see cref="Random"/> for repeatable games.</summary>
     public RandomAIPlayer(int id, string name, IBoard board, IFleet fleet, Random random)
         : base(id, name, board, fleet)
     {

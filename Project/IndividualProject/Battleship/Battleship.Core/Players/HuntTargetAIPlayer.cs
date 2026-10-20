@@ -12,6 +12,7 @@ public class HuntTargetAIPlayer : Player, IShotStrategy
     private readonly HashSet<Coordinate> _firedShots = new();
     private readonly Queue<Coordinate> _targetQueue = new();
 
+    /// <summary>Creates a bot that picks targets with <paramref name="random"/>; pass a seeded <see cref="Random"/> for repeatable games.</summary>
     public HuntTargetAIPlayer(int id, string name, IBoard board, IFleet fleet, Random random)
         : base(id, name, board, fleet)
     {

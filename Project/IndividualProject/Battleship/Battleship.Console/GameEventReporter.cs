@@ -10,6 +10,7 @@ public class GameEventReporter
     private readonly ConsoleScreen _screen;
     private readonly ILogger<GameEventReporter> _logger;
 
+    /// <summary>Creates a reporter that writes to <paramref name="screen"/> and <paramref name="logger"/>.</summary>
     public GameEventReporter(ConsoleScreen screen, ILogger<GameEventReporter> logger)
     {
         ArgumentNullException.ThrowIfNull(screen);
@@ -18,6 +19,7 @@ public class GameEventReporter
         _logger = logger;
     }
 
+    /// <summary>Subscribes to the shot and game-ended events of <paramref name="controller"/>.</summary>
     public void Attach(GameController controller)
     {
         ArgumentNullException.ThrowIfNull(controller);

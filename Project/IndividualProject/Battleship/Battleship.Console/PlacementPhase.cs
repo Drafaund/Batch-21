@@ -11,6 +11,7 @@ public class PlacementPhase
     private readonly GameController _controller;
     private readonly Random _random;
 
+    /// <summary>Creates a placement phase; <paramref name="random"/> is used for random placement.</summary>
     public PlacementPhase(ConsoleScreen screen, BoardRenderer renderer, GameController controller, Random random)
     {
         ArgumentNullException.ThrowIfNull(screen);
@@ -23,6 +24,7 @@ public class PlacementPhase
         _random = random;
     }
 
+    /// <summary>Places the ships of <paramref name="participant"/> on its board.</summary>
     public void Place(Participant participant)
     {
         if (!participant.IsHuman || AskPlaceRandomly(participant.Player.Name))
