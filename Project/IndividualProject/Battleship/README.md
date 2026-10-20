@@ -16,6 +16,16 @@ From this folder (`Battleship`):
 dotnet run --project Battleship.Console
 ```
 
+### Web API (work in progress)
+
+The API lets one player play a game against a bot over HTTP. The React front end and online games between two people are planned.
+
+```
+dotnet run --project Battleship.Api
+```
+
+It listens on http://localhost:5080, and in the Development environment the interactive documentation is at http://localhost:5080/swagger. The endpoints, JSON shapes, and rules are described in [WEB_DESIGN.md](WEB_DESIGN.md). Games live in memory and are lost when the server stops.
+
 ## Game modes
 
 | Mode | Description |
@@ -41,6 +51,8 @@ Shots and the winner are also written to a log file next to the executable:
 ```
 Battleship/
 ├── battleship.v2.mmd        class diagram (Mermaid)
+├── battleship.v3.mmd        proposal: v2 plus TakeTurn(Coordinate) for the web, waiting for review
+├── WEB_DESIGN.md            design of the web version: endpoints, events, DTOs, session rules
 ├── Battleship.Core/         game logic, no UI
 │   ├── Enums/               ShipType, Orientation, GameState, ShotResult, CellState
 │   ├── Models/              Coordinate, Ship, Cell, Board, Fleet
@@ -50,7 +62,12 @@ Battleship/
 ├── Battleship.Console/      terminal app (Spectre.Console, Serilog logging)
 │   ├── Program.cs           composition root: creates every object, including the ships
 │   └── Rendering/           board drawing
-└── Battleship.Tests/        xUnit tests for Battleship.Core
+├── Battleship.Api/          ASP.NET Core API: one player against a bot over HTTP
+│   ├── Contracts/           request and response types (the enemy board type cannot describe a ship)
+│   ├── Games/               GameSession, GameStore, OnlinePlayer, ViewMapper, error handling
+│   └── Endpoints/           the REST endpoints
+├── Battleship.Tests/        xUnit tests for Battleship.Core
+└── Battleship.Api.Tests/    integration tests for the API (WebApplicationFactory)
 ```
 
 ## Design
@@ -81,6 +98,27 @@ dotnet test Battleship.Tests
 
 Coverage of `Battleship.Core` (from `dotnet test Battleship.Tests --collect:"XPlat Code Coverage"`): **100% of lines and 100% of branches**. `Battleship.Console` has no automated tests; it was checked by playing all three modes.
 
+### API tests
+
+```
+dotnet test Battleship.Api.Tests
+```
+
+111 test cases (92 test methods), all passing. They start the API in memory and talk to it over HTTP with seeded randomness, so a run is repeatable.
+
+| Area | Test methods |
+|---|---|
+| Creating a game and its validation | 18 |
+| Reading a game and the token check | 9 |
+| Placing ships by hand and at random | 23 |
+| Firing, bot replies, invalid shots | 15 |
+| Whole games over HTTP, both bots | 5 |
+| Hidden information: the enemy board never shows a ship | 7 |
+| Error format and logging | 5 |
+| Classes behind the endpoints | 10 |
+
+Coverage of `Battleship.Api`: 97.5% of lines and 92.6% of branches.
+
 ## Planned
 
-A web version: an ASP.NET Core API on top of `Battleship.Core` and a React front end.
+The rest of the web version: a React front end, then online games between two people with real-time updates (SignalR), then hosting. See [WEB_DESIGN.md](WEB_DESIGN.md).
