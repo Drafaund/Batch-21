@@ -10,11 +10,13 @@ interface Options {
   view?: GameView
   busy?: boolean
   log?: LogEntry[]
+  withEmotes?: boolean
 }
 
-function setup({ view = fleetView(), busy = false, log = [] }: Options = {}) {
+function setup({ view = fleetView(), busy = false, log = [], withEmotes = false }: Options = {}) {
   const onFire = vi.fn()
   const onPlayAgain = vi.fn()
+  const onSendEmote = vi.fn()
   const utils = render(
     <BattleScreen
       view={view}
@@ -24,12 +26,59 @@ function setup({ view = fleetView(), busy = false, log = [] }: Options = {}) {
       lastBotShots={[]}
       onFire={onFire}
       onPlayAgain={onPlayAgain}
+      emotes={withEmotes ? { incoming: null, onSend: onSendEmote } : undefined}
     />,
   )
-  return { onFire, onPlayAgain, ...utils }
+  return { onFire, onPlayAgain, onSendEmote, ...utils }
+}
+
+/** The Destroyer lies at E-1 and E-2 in `fleetView`; both cells are hit and the ship has sunk. */
+function viewWithSunkDestroyer(): GameView {
+  const view = fleetView()
+  const cells = view.ownBoard.cells.map((row) => [...row])
+  cells[4][0] = 'Hit'
+  cells[4][1] = 'Hit'
+  const ownShips = view.ownShips.map((ship) => (ship.type === 'Destroyer' ? { ...ship, hitCount: 2, isSunk: true } : ship))
+  return { ...view, ownBoard: { size: 10, cells }, ownShips }
 }
 
 describe('BattleScreen', () => {
+  it('shows the cells of the own sunk ship as sunk, because the board only says hit', () => {
+    setup({ view: viewWithSunkDestroyer() })
+
+    expect(screen.getByRole('img', { name: 'Your fleet E-1: sunk' })).toHaveClass('sunk')
+    expect(screen.getByRole('img', { name: 'Your fleet E-2: sunk' })).toHaveClass('sunk')
+  })
+
+  it('keeps a ship that is only hit as a hit', () => {
+    const view = viewWithSunkDestroyer()
+    const ownShips = view.ownShips.map((ship) => (ship.type === 'Destroyer' ? { ...ship, hitCount: 1, isSunk: false } : ship))
+    setup({ view: { ...view, ownShips } })
+
+    expect(screen.getByRole('img', { name: 'Your fleet E-1: hit' })).not.toHaveClass('sunk')
+  })
+
+  it('has no emote buttons against a bot', () => {
+    setup()
+
+    expect(screen.queryByRole('group', { name: 'Send an emote' })).not.toBeInTheDocument()
+  })
+
+  it('has emote buttons in a room, and they do not fire a shot', async () => {
+    const { onFire, onSendEmote } = setup({ withEmotes: true })
+
+    await userEvent.click(screen.getByRole('button', { name: 'Thumbs up' }))
+
+    expect(onSendEmote).toHaveBeenCalledExactlyOnceWith('thumbsUp')
+    expect(onFire).not.toHaveBeenCalled()
+  })
+
+  it('still has emote buttons after the game is over, for a "good game"', () => {
+    setup({ view: fleetView({ phase: 'Finished', winner: 'you', yourTurn: false }), withEmotes: true })
+
+    expect(screen.getByRole('group', { name: 'Send an emote' })).toBeInTheDocument()
+  })
+
   it('tells the player to fire and lets any untouched target cell be clicked', async () => {
     const { onFire } = setup()
 

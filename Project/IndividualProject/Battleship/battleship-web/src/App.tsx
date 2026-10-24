@@ -69,6 +69,7 @@ export default function App({ api = realApi, realtime = realRealtime }: AppProps
           lastBotShots={game.lastBotShots}
           onFire={(target) => void game.fire(target)}
           onPlayAgain={game.reset}
+          emotes={game.online ? { incoming: game.incomingEmote, onSend: (emote) => void game.sendEmote(emote) } : undefined}
         />
       )}
     </main>

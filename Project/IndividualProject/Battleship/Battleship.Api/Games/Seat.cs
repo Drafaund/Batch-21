@@ -38,6 +38,9 @@ internal sealed class Seat
     /// <summary>Counts down while the player is away during a game; at zero the player forfeits.</summary>
     public Timer? DropTimer { get; set; }
 
+    /// <summary>When this seat last sent an emote, for the cooldown; null before the first one.</summary>
+    public DateTime? LastEmoteAt { get; set; }
+
     /// <summary>A bot is always there; a human is there while at least one connection is open.</summary>
     public bool IsConnected => IsBot || Connections > 0;
 

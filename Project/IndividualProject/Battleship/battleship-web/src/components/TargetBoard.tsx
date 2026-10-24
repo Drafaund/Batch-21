@@ -11,8 +11,10 @@ interface TargetBoardProps {
 
 const LOOK: Record<EnemyCell, { symbol: string; className: string; text: string }> = {
   Unknown: { symbol: '', className: 'unknown', text: 'not fired at yet' },
-  Hit: { symbol: '✕', className: 'hit', text: 'hit' },
+  // Hit and Sunk are drawn by CSS (flames and a skull), so they have no text symbol.
+  Hit: { symbol: '', className: 'hit', text: 'hit' },
   Miss: { symbol: '•', className: 'miss', text: 'miss' },
+  Sunk: { symbol: '', className: 'sunk', text: 'sunk' },
 }
 
 /** The enemy board: only the results of the player's own shots, never the enemy ships. */

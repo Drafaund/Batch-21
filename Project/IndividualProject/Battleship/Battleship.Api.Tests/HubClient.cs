@@ -15,6 +15,7 @@ internal sealed class HubClient : IAsyncDisposable
         GameEventNames.ShotResolved,
         GameEventNames.GameEnded,
         GameEventNames.OpponentConnection,
+        GameEventNames.EmoteReceived,
     };
 
     private readonly object _sync = new();

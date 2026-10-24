@@ -8,4 +8,5 @@ internal static class GameEventNames
     public const string ShotResolved = "ShotResolved";
     public const string GameEnded = "GameEnded";
     public const string OpponentConnection = "OpponentConnection";
+    public const string EmoteReceived = "EmoteReceived";
 }

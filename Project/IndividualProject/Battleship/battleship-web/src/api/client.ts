@@ -1,6 +1,7 @@
 import type {
   Coordinate,
   CreateGameResponse,
+  EmoteCode,
   GameView,
   JoinGameResponse,
   OpponentKind,
@@ -28,6 +29,8 @@ export interface GameApi {
   placeShip(code: string, token: string, type: ShipType, start: Coordinate, orientation: Orientation): Promise<GameView>
   placeShipsRandomly(code: string, token: string): Promise<GameView>
   fire(code: string, token: string, target: Coordinate): Promise<ShotResponse>
+  /** Only in a room with another human; the opponent gets it as an event. */
+  sendEmote(code: string, token: string, emote: EmoteCode): Promise<void>
 }
 
 const TOKEN_HEADER = 'X-Player-Token'
@@ -57,6 +60,11 @@ async function request<T>(method: string, path: string, token?: string, body?: u
     throw new ApiError(response.status, problem?.detail ?? problem?.title ?? `The server answered with an error (${response.status}).`)
   }
 
+  // 204 No Content has no body to read (an emote is not part of the game state).
+  if (response.status === 204) {
+    return undefined as T
+  }
+
   return (await response.json()) as T
 }
 
@@ -70,4 +78,5 @@ export const api: GameApi = {
     request('POST', `${gamePath(code)}/ships`, token, { type, start, orientation }),
   placeShipsRandomly: (code, token) => request('POST', `${gamePath(code)}/ships/random`, token),
   fire: (code, token, target) => request('POST', `${gamePath(code)}/shots`, token, { target }),
+  sendEmote: (code, token, emote) => request('POST', `${gamePath(code)}/emotes`, token, { emote }),
 }

@@ -29,6 +29,30 @@ describe('TargetBoard', () => {
     expect(screen.getByRole('img', { name: 'Target board A-3: not fired at yet' })).toBeInTheDocument()
   })
 
+  it('shows the cells of a sunk ship as sunk, not as plain hits', () => {
+    render(
+      <TargetBoard
+        board={board([
+          [0, 4, 'Sunk'],
+          [1, 4, 'Sunk'],
+          [0, 0, 'Hit'],
+        ])}
+      />,
+    )
+
+    expect(screen.getByRole('img', { name: 'Target board E-1: sunk' })).toHaveClass('sunk')
+    expect(screen.getByRole('img', { name: 'Target board E-2: sunk' })).toHaveClass('sunk')
+    expect(screen.getByRole('img', { name: 'Target board A-1: hit' })).toHaveClass('hit')
+    expect(screen.getByRole('img', { name: 'Target board A-1: hit' })).not.toHaveClass('sunk')
+  })
+
+  it('cannot fire again at a sunk cell', () => {
+    render(<TargetBoard board={board([[0, 4, 'Sunk']])} onFire={vi.fn()} />)
+
+    expect(screen.queryByRole('button', { name: /E-1:/ })).not.toBeInTheDocument()
+    expect(screen.getAllByRole('button')).toHaveLength(99)
+  })
+
   it('never describes a ship', () => {
     render(<TargetBoard board={board([[4, 4, 'Hit']])} />)
 

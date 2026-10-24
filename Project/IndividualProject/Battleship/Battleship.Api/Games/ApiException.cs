@@ -21,4 +21,6 @@ internal sealed class ApiException : Exception
     public static ApiException NotFound(string detail) => new(StatusCodes.Status404NotFound, "Not found", detail);
 
     public static ApiException Conflict(string detail) => new(StatusCodes.Status409Conflict, "Conflict", detail);
+
+    public static ApiException TooManyRequests(string detail) => new(StatusCodes.Status429TooManyRequests, "Too many requests", detail);
 }

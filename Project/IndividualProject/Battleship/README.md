@@ -1,12 +1,18 @@
 # Battleship
 
-A two-player Battleship game written in C# (.NET 8). It runs in the terminal and supports human and computer players.
-The game rules live in a UI-free library (`Battleship.Core`), so the same code can later sit behind a web API.
+A two-player Battleship game written in C# (.NET 8) with a React front end. It runs in the terminal and in the browser, against a bot or against another person.
+The game rules live in a UI-free library (`Battleship.Core`), so the console app, the web API, and the web page all use the same code.
+
+| Where | What you can do |
+|---|---|
+| Terminal | Human vs Human on one keyboard, Human vs AI, AI vs AI |
+| Browser | Play against a bot, or play online against a friend in a room with a code, with real-time updates (SignalR) |
 
 ## Requirements
 
 - [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
-- An interactive terminal (the menus use arrow keys, so piped input is not supported)
+- An interactive terminal for the console app (the menus use arrow keys, so piped input is not supported)
+- [Node.js 22](https://nodejs.org/) for the web version
 
 ## Run
 
@@ -16,9 +22,7 @@ From this folder (`Battleship`):
 dotnet run --project Battleship.Console
 ```
 
-### Web version (work in progress)
-
-One player can play a game against a bot in the browser. Online games between two people are planned.
+### Web version
 
 ```
 # terminal 1, from this folder
@@ -30,15 +34,32 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173. The API listens on http://localhost:5080, and in the Development environment its interactive documentation is at http://localhost:5080/swagger. The endpoints, JSON shapes, and rules are described in [WEB_DESIGN.md](WEB_DESIGN.md), and the front end is described in [battleship-web/README.md](battleship-web/README.md). Games live in memory and are lost when the server stops.
+Open http://localhost:5173. The API listens on http://localhost:5080, and in the Development environment its interactive documentation is at http://localhost:5080/swagger. The endpoints, JSON shapes, and rules are described in [WEB_DESIGN.md](WEB_DESIGN.md), and the front end is described in [battleship-web/README.md](battleship-web/README.md).
 
-## Game modes
+**Against a bot:** enter a name, choose *Random* or *Hunt-Target*, place your ships by hand or at random, and fire.
+
+**Online against a person:** one player chooses *Create a room* and shares the five-character code. The other player enters a name and the code and chooses *Join room*. Both place their ships, and the game starts by itself when both fleets are complete. To try it alone, open the page in a second browser window (for example a private window).
+
+Online games have a few extra rules:
+
+- A player who does not fire within 30 seconds of their turn loses. A countdown is shown.
+- A player who stays disconnected for 30 seconds during a battle loses; the other player sees when they leave and when they come back.
+- Players can send each other one of eight emotes (2 seconds between emotes). The server only accepts codes from a fixed list, so no free text reaches the opponent.
+- Reloading the page returns to the same game.
+
+The limits are set in the `Game` section of `Battleship.Api/appsettings.json` (`TurnTimeout`, `OpponentTimeout`, `EmoteCooldown`), or with environment variables such as `Game__TurnTimeout=00:00:20`.
+
+Games live in memory and are lost when the server stops. Finished and abandoned games are not cleaned up yet (see [Planned](#planned)).
+
+## Game modes (terminal)
 
 | Mode | Description |
 |---|---|
 | Human vs Human | Two people share one keyboard. The screen is cleared between turns so nobody sees the other's fleet. |
 | Human vs AI | One person against a bot. You choose the bot: **Random** (fires at random cells) or **Hunt-Target** (hunts at random, then fires at the neighbours of a hit until the ship sinks). |
 | AI vs AI | Watch a Random bot play a Hunt-Target bot. |
+
+The browser offers the same two bots, plus online play between two people.
 
 ## How to play
 
@@ -68,12 +89,13 @@ Battleship/
 ├── Battleship.Console/      terminal app (Spectre.Console, Serilog logging)
 │   ├── Program.cs           composition root: creates every object, including the ships
 │   └── Rendering/           board drawing
-├── Battleship.Api/          ASP.NET Core API: one player against a bot over HTTP
-│   ├── Contracts/           request and response types (the enemy board type cannot describe a ship)
-│   ├── Games/               GameSession, GameStore, OnlinePlayer, ViewMapper, error handling
+├── Battleship.Api/          ASP.NET Core API: games against a bot or between two people
+│   ├── Contracts/           request, response, and event types (the enemy board type cannot describe a ship)
+│   ├── Games/               GameSession, GameStore, OnlinePlayer, Seat, ViewMapper, EmoteCatalog, error handling
+│   ├── Hubs/                the SignalR hub, hub authentication, and the sink that sends events to players
 │   └── Endpoints/           the REST endpoints
 ├── Battleship.Tests/        xUnit tests for Battleship.Core
-├── Battleship.Api.Tests/    integration tests for the API (WebApplicationFactory)
+├── Battleship.Api.Tests/    integration tests for the API (WebApplicationFactory, SignalR clients)
 └── battleship-web/          React front end (Vite, TypeScript), with Vitest and Playwright tests
 ```
 
@@ -86,7 +108,15 @@ Battleship/
 - **Events**: `OnShotResolved` and `OnGameEnded`. The console subscribes to them for messages and logging; Core never writes to the screen.
 - **Randomness is injected** (`Random`), so games and ship placement are repeatable with a seed.
 
-The class diagram is in [battleship.v2.mmd](battleship.v2.mmd). It covers `Battleship.Core`; the console classes are outside it.
+The web version adds these rules on top of Core (details in [WEB_DESIGN.md](WEB_DESIGN.md)):
+
+- **The server decides everything.** A browser only says "fire at D-4". Commands go over REST; SignalR only pushes events from the server to the browsers.
+- **One lock per game.** Every command, and every timer, runs inside `GameSession` under one lock. The events it produces are sent after the lock is released.
+- **Each player sees only their own view.** `ViewMapper` builds a `GameView` per seat. The enemy board type has no value for an unhit ship, so it cannot leak where the ships are.
+- **A player is identified by a random token** that the server gives them for one game (header `X-Player-Token`, or the `access_token` query value for the SignalR connection). There is no login.
+- **Every error has the same shape** (RFC 7807 problem details), including errors raised by the framework.
+
+The class diagram is in [battleship.v2.mmd](battleship.v2.mmd). It covers `Battleship.Core`; the console and API classes are outside it.
 
 ## Tests
 
@@ -111,7 +141,7 @@ Coverage of `Battleship.Core` (from `dotnet test Battleship.Tests --collect:"XPl
 dotnet test Battleship.Api.Tests
 ```
 
-111 test cases (92 test methods), all passing. They start the API in memory and talk to it over HTTP with seeded randomness, so a run is repeatable.
+183 test cases (162 test methods), all passing. They start the API in memory and talk to it over HTTP (and over SignalR for online games) with seeded randomness, so a run is repeatable.
 
 | Area | Test methods |
 |---|---|
@@ -121,10 +151,15 @@ dotnet test Battleship.Api.Tests
 | Firing, bot replies, invalid shots | 15 |
 | Whole games over HTTP, both bots | 5 |
 | Hidden information: the enemy board never shows a ship | 7 |
+| Sunk ships on the enemy board | 7 |
 | Error format and logging | 5 |
-| Classes behind the endpoints | 10 |
+| Online games: rooms, joining, two players | 20 |
+| SignalR hub and its events | 17 |
+| Emotes | 14 |
+| Turn limit and absent players | 11 |
+| Classes behind the endpoints | 11 |
 
-Coverage of `Battleship.Api`: 97.5% of lines and 92.6% of branches.
+Coverage of `Battleship.Api`: 96.1% of lines and 91.5% of branches.
 
 ### Front end tests
 
@@ -134,8 +169,22 @@ npm test        # component and unit tests (Vitest)
 npm run e2e     # browser tests (Playwright) against the real API
 ```
 
-119 Vitest tests cover the API client, the saved session, the placement preview, every component and screen, the `useGame` hook, and whole games against a scripted server. Six Playwright tests play full games against both bots in a real browser, place ships by hand, rotate with the R key, resume after a reload, and start over.
+195 Vitest tests cover the API client, the saved session, the placement preview, every component and screen, the turn countdown, the `useGame` hook (against a bot and online), and whole games against a scripted server.
+
+13 Playwright tests drive a real browser against the real API:
+
+- Against a bot: full games against both bots, placing ships by hand, rotating with the R key, resuming after a reload, and starting over.
+- Online, with two browser contexts: a whole game, a shot showing on the other screen at once, reloading in the middle of a battle, seeing the opponent drop out and come back, refusing an unknown code or a full room, and leaving the lobby.
+- Turn limit: a player who does nothing loses. This test skips itself unless the API runs with a short limit, for example `Game__TurnTimeout=00:00:06 E2E_TURN_TIMEOUT=1 npx playwright test e2e/turn-timeout.spec.ts`, so 12 of the 13 run by default.
+
+Online play has been tried with two browsers on one machine, not yet over two real networks.
 
 ## Planned
 
-The rest of the web version: online games between two people with real-time updates (SignalR), then hosting. See [WEB_DESIGN.md](WEB_DESIGN.md).
+| Step | What |
+|---|---|
+| Hardening | A rate limit (only emotes are limited now), cleanup of finished and abandoned games, a limit on the number of games, and a stress test of `GameSession` with many commands at once |
+| Hosting | A Docker image that serves the API and the built React files, a free host, and a CI build |
+| Optional | Rematch, Salvo mode (shots per turn equal to the ships still afloat), a database |
+
+See [TODO.md](TODO.md) for the full list.

@@ -16,6 +16,7 @@ internal static class GameEndpoints
         games.MapPost("/{code}/ships", PlaceShip);
         games.MapPost("/{code}/ships/random", PlaceShipsRandomly);
         games.MapPost("/{code}/shots", Fire);
+        games.MapPost("/{code}/emotes", SendEmote);
         return app;
     }
 
@@ -77,5 +78,21 @@ internal static class GameEndpoints
         }
 
         return access.Session.Fire(access.Seat, target.ToCoordinate());
+    }
+
+    private static IResult SendEmote(
+        string code,
+        EmoteRequest? request,
+        [FromHeader(Name = TokenHeader)] string? token,
+        GameStore store)
+    {
+        var access = store.GetAuthorized(code, token);
+        if (!EmoteCatalog.IsKnown(request?.Emote))
+        {
+            throw ApiException.BadRequest($"emote must be one of: {string.Join(", ", EmoteCatalog.Codes)}.");
+        }
+
+        access.Session.SendEmote(access.Seat, request!.Emote!);
+        return Results.NoContent();
     }
 }

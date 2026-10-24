@@ -14,6 +14,7 @@
   --ship-text: #ffffff;
   --hit: #d6453d;
   --hit-glow: #ffb347;
+  --skull: #ece3d6;
   --miss: #ffffff;
   --last-shot: #ffd43b;
   --ok: #2f9e44;
@@ -252,11 +253,56 @@ fieldset {
   color: var(--ship-text);
 }
 
-/* Fire: the hit glows and pulses. */
+/* Fire: a dark ember bed that glows, with two flames that flicker. The flames are squares with one sharp
+   corner, turned 45 degrees so the sharp corner points up. */
 .cell.hit {
-  background: radial-gradient(circle at 50% 55%, var(--hit-glow) 0%, var(--hit) 70%);
-  color: #fff;
+  overflow: hidden;
+  border-color: rgba(255, 190, 110, 0.55);
+  background: radial-gradient(circle at 50% 100%, #8a2a12 0%, #3b110a 55%, #1d0a07 100%);
   animation: hit-pulse 1.6s ease-in-out infinite;
+}
+
+.cell.hit::before,
+.cell.hit::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  aspect-ratio: 1;
+  border-radius: 0 50% 50% 50%;
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.cell.hit::before {
+  bottom: 20%;
+  width: 46%;
+  background: linear-gradient(to top left, #ffd84a 0%, #ff8a1f 40%, #e8381b 80%, #b3170f 100%);
+  box-shadow: 0 0 6px 1px rgba(255, 140, 40, 0.7);
+  animation: flame-flicker 0.8s ease-in-out infinite alternate;
+}
+
+.cell.hit::after {
+  bottom: 22%;
+  width: 26%;
+  background: linear-gradient(to top left, #fffbe0 0%, #ffe066 55%, #ffb02e 100%);
+  animation: flame-flicker-inner 0.55s ease-in-out -0.2s infinite alternate;
+}
+
+/* Sunk: a charred cell with a skull. The skull is skull.svg used as a mask, so --skull sets its colour. */
+.cell.sunk {
+  background: radial-gradient(circle at 50% 40%, #4a2e29 0%, #1a0d0b 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.25),
+    inset 0 -6px 10px rgba(0, 0, 0, 0.5);
+}
+
+.cell.sunk::before {
+  content: '';
+  position: absolute;
+  inset: 14%;
+  background: var(--skull);
+  opacity: 0.92;
+  -webkit-mask: url('/skull.svg') center / contain no-repeat;
+  mask: url('/skull.svg') center / contain no-repeat;
 }
 
 /* Splash: the water stays, and a ring spreads out from the dot. */
@@ -326,6 +372,24 @@ button.cell.unknown:focus-visible {
   }
 }
 
+@keyframes flame-flicker {
+  from {
+    transform: translateX(-50%) rotate(43deg) scale(0.95);
+  }
+  to {
+    transform: translateX(-50%) rotate(48deg) scale(1.07);
+  }
+}
+
+@keyframes flame-flicker-inner {
+  from {
+    transform: translateX(-50%) rotate(49deg) scale(0.9);
+  }
+  to {
+    transform: translateX(-50%) rotate(40deg) scale(1.12);
+  }
+}
+
 @keyframes splash-ring {
   0% {
     opacity: 0.9;
@@ -337,10 +401,12 @@ button.cell.unknown:focus-visible {
   }
 }
 
-/* Reduced motion keeps the sea flowing, only slower. The fire pulse and the splash ring,
-   which flash or expand, stay off. */
+/* Reduced motion keeps the sea flowing, only slower. The fire pulse, the flickering flames, and the
+   splash ring, which flash or expand, stay off. The flames are drawn still. */
 @media (prefers-reduced-motion: reduce) {
   .board .cell.hit,
+  .board .cell.hit::before,
+  .board .cell.hit::after,
   .board .cell.miss::after {
     animation: none !important;
   }
@@ -520,4 +586,78 @@ button.cell.unknown:focus-visible {
 
 .countdown.urgent {
   color: var(--bad);
+}
+
+/* Emotes */
+.emote-panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+}
+
+.emote-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.emote-button {
+  padding: 0.2rem 0.5rem;
+  font-size: 1.25rem;
+  line-height: 1.3;
+}
+
+.emote-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+/* Reserves the height, so the boards do not jump when a bubble appears. */
+.emote-stage {
+  flex-basis: 100%;
+  min-height: 2.6rem;
+  display: flex;
+  align-items: center;
+}
+
+.emote-bubble {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.2rem 0.9rem 0.2rem 0.6rem;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  animation: emote-pop 0.35s ease-out;
+}
+
+.emote-glyph {
+  font-size: 1.8rem;
+  line-height: 1.2;
+}
+
+.emote-caption {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+@keyframes emote-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(0.5rem) scale(0.7);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .emote-bubble {
+    animation: none;
+  }
 }

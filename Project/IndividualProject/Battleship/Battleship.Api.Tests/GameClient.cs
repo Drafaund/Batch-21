@@ -106,6 +106,11 @@ internal sealed class GameClient
 
     public Task<HttpResponseMessage> PostRawAsync(string path, object? body) => SendAsync(_http, HttpMethod.Post, $"/api/games/{Code}/{path}", Token, body);
 
+    public Task<HttpResponseMessage> EmoteAsync(string? emote) => EmoteAsync(Token, emote);
+
+    public Task<HttpResponseMessage> EmoteAsync(string? token, string? emote)
+        => SendAsync(_http, HttpMethod.Post, $"/api/games/{Code}/emotes", token, new { emote });
+
     public Task<HttpResponseMessage> PlaceRandomAsync() => PlaceRandomAsync(Token);
 
     public Task<HttpResponseMessage> PlaceRandomAsync(string? token)

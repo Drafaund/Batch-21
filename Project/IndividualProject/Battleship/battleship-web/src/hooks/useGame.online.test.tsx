@@ -1,5 +1,5 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../api/client'
 import { loadSession, saveSession } from '../api/session'
 import { fleetView, makeFakeApi, makeFakeRealtime, makeView } from '../test/fixtures'
@@ -92,6 +92,65 @@ describe('useGame in a room with another human', () => {
 
     expect(hook.result.current.view?.phase).toBe('InProgress')
     expect(hook.result.current.view?.yourTurn).toBe(true)
+  })
+
+  it('keeps the emote of the opponent apart from the game: no new view, nothing in the log', async () => {
+    const { server, hook } = await openedRoom()
+    await server.emit({ type: 'GameStarted', view: fleetView({ version: 6, opponent: { name: 'Bob', connected: true } }) })
+    const logBefore = hook.result.current.log
+
+    await server.emit({ type: 'EmoteReceived', emote: 'laugh' })
+
+    expect(hook.result.current.incomingEmote).toEqual({ id: expect.any(Number), emote: 'laugh' })
+    expect(hook.result.current.view?.version).toBe(6)
+    expect(hook.result.current.log).toBe(logBefore)
+  })
+
+  it('gives the same emote twice in a row a new id so it shows again', async () => {
+    const { server, hook } = await openedRoom()
+
+    await server.emit({ type: 'EmoteReceived', emote: 'clap' })
+    const first = hook.result.current.incomingEmote
+    await server.emit({ type: 'EmoteReceived', emote: 'clap' })
+
+    expect(hook.result.current.incomingEmote?.emote).toBe('clap')
+    expect(hook.result.current.incomingEmote?.id).not.toBe(first?.id)
+  })
+
+  it('sends an emote with the code and token without marking the game as busy', async () => {
+    const sendEmote = vi.fn(async () => {})
+    const { hook } = await openedRoom({ sendEmote })
+
+    await act(() => hook.result.current.sendEmote('wow'))
+
+    expect(sendEmote).toHaveBeenCalledExactlyOnceWith('K7QF2', 'secret', 'wow')
+    expect(hook.result.current.busy).toBe(false)
+    expect(hook.result.current.error).toBeNull()
+  })
+
+  it('says nothing when the server finds an emote too fast', async () => {
+    const { hook } = await openedRoom({ sendEmote: async () => Promise.reject(new ApiError(429, 'Too fast.')) })
+
+    await act(() => hook.result.current.sendEmote('wow'))
+
+    expect(hook.result.current.error).toBeNull()
+  })
+
+  it('shows other refusals of an emote as an error', async () => {
+    const { hook } = await openedRoom({ sendEmote: async () => Promise.reject(new ApiError(409, 'Wait for the other player.')) })
+
+    await act(() => hook.result.current.sendEmote('wow'))
+
+    expect(hook.result.current.error).toBe('Wait for the other player.')
+  })
+
+  it('forgets the emote when the game is left', async () => {
+    const { server, hook } = await openedRoom()
+    await server.emit({ type: 'EmoteReceived', emote: 'wave' })
+
+    act(() => hook.result.current.reset())
+
+    expect(hook.result.current.incomingEmote).toBeNull()
   })
 
   it('logs and highlights a shot of the opponent but not one of its own', async () => {

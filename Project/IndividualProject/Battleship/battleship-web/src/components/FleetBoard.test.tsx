@@ -30,6 +30,32 @@ describe('FleetBoard', () => {
     expect(screen.getByRole('img', { name: 'Your fleet J-10: water' })).toBeInTheDocument()
   })
 
+  it('shows the hit cells of a sunk ship as sunk and keeps the other hits as hits', () => {
+    render(
+      <FleetBoard
+        board={board([
+          [0, 4, 'Hit'],
+          [1, 4, 'Hit'],
+          [5, 5, 'Hit'],
+        ])}
+        sunkCells={[
+          { x: 0, y: 4 },
+          { x: 1, y: 4 },
+        ]}
+      />,
+    )
+
+    expect(screen.getByRole('img', { name: 'Your fleet E-1: sunk' })).toHaveClass('sunk')
+    expect(screen.getByRole('img', { name: 'Your fleet E-2: sunk' })).toHaveClass('sunk')
+    expect(screen.getByRole('img', { name: 'Your fleet F-6: hit' })).toHaveClass('hit')
+  })
+
+  it('treats every hit as a plain hit when no ship has sunk', () => {
+    render(<FleetBoard board={board([[0, 4, 'Hit']])} />)
+
+    expect(screen.getByRole('img', { name: 'Your fleet E-1: hit' })).not.toHaveClass('sunk')
+  })
+
   it('marks the latest shots at this board', () => {
     render(<FleetBoard board={board([[3, 3, 'Miss']])} highlight={[{ x: 3, y: 3 }]} />)
 

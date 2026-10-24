@@ -78,6 +78,18 @@ describe('api', () => {
     expect(JSON.parse(init.body as string)).toEqual({ target: { x: 3, y: 3 } })
   })
 
+  it('sends an emote and accepts the empty answer', async () => {
+    const fetchMock = stubFetch(new Response(null, { status: 204 }))
+
+    await expect(api.sendEmote('K7QF2', 'secret', 'thumbsUp')).resolves.toBeUndefined()
+
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
+    expect(url).toBe('/api/games/K7QF2/emotes')
+    expect(init.method).toBe('POST')
+    expect(init.headers).toEqual({ 'X-Player-Token': 'secret', 'Content-Type': 'application/json' })
+    expect(JSON.parse(init.body as string)).toEqual({ emote: 'thumbsUp' })
+  })
+
   it('escapes the game code in the path', async () => {
     const fetchMock = stubFetch(respond(200, makeView()))
 

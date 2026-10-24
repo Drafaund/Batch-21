@@ -163,6 +163,34 @@ internal sealed class GameSession
         });
     }
 
+    /// <summary>
+    /// Passes an emote on to the other player. An emote is not part of the game: the version does not change
+    /// and nothing is stored, so a player who was away never sees the ones sent meanwhile.
+    /// </summary>
+    public void SendEmote(int seat, string emote)
+    {
+        Execute(events =>
+        {
+            var sender = _seats[seat - 1];
+            var receiver = OtherSeat(sender);
+            if (!IsOnline || !receiver.IsTaken)
+            {
+                throw ApiException.Conflict(IsOnline
+                    ? "Wait for the other player to join before sending emotes."
+                    : "Emotes are only for games between two players.");
+            }
+
+            var now = DateTime.UtcNow;
+            if (sender.LastEmoteAt is { } last && now - last < _options.EmoteCooldown)
+            {
+                throw ApiException.TooManyRequests("You are sending emotes too fast. Wait a moment.");
+            }
+
+            sender.LastEmoteAt = now;
+            events.Add(new SeatEvent(receiver.Number, GameEventNames.EmoteReceived, new EmoteReceivedEvent(emote)));
+        });
+    }
+
     /// <summary>A SignalR connection of this seat opened. The opponent is told when it is the first one.</summary>
     public void Connect(int seat)
     {

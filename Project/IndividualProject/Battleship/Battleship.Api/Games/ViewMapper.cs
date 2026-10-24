@@ -75,8 +75,11 @@ internal static class ViewMapper
             for (var x = 0; x < board.BoardSize; x++)
             {
                 // A cell that holds a ship but was not hit yet is reported as Unknown, like water.
-                rows[y][x] = board.Cells[x, y].State switch
+                // A hit cell of a ship that has sunk is Sunk: every cell of that ship is already hit, so nothing is revealed.
+                var cell = board.Cells[x, y];
+                rows[y][x] = cell.State switch
                 {
+                    CellState.Hit when cell.OccupyingShip is { IsSunk: true } => EnemyCell.Sunk,
                     CellState.Hit => EnemyCell.Hit,
                     CellState.Miss => EnemyCell.Miss,
                     _ => EnemyCell.Unknown,

@@ -70,6 +70,7 @@ export function makeFakeApi(overrides: Partial<GameApi> = {}): GameApi {
     placeShip: vi.fn(overrides.placeShip ?? unexpected),
     placeShipsRandomly: vi.fn(overrides.placeShipsRandomly ?? unexpected),
     fire: vi.fn(overrides.fire ?? unexpected),
+    sendEmote: vi.fn(overrides.sendEmote ?? unexpected),
   }
 }
 

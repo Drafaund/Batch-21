@@ -17,7 +17,8 @@ public class PrivacyTests : IClassFixture<ApiFactory>
     {
         var names = Enum.GetNames<EnemyCell>();
 
-        Assert.Equal(new[] { "Unknown", "Hit", "Miss" }, names);
+        // Sunk marks the cells of a ship that was hit everywhere; there is still no value for a ship that is afloat.
+        Assert.Equal(new[] { "Unknown", "Hit", "Miss", "Sunk" }, names);
     }
 
     [Fact]
@@ -61,7 +62,7 @@ public class PrivacyTests : IClassFixture<ApiFactory>
     }
 
     [Fact]
-    public async Task EnemyBoard_Json_ContainsNoShipValueAndOnlyTheThreeKnownCellNames()
+    public async Task EnemyBoard_Json_ContainsNoShipValueAndOnlyTheFourKnownCellNames()
     {
         var game = await GameClient.CreateAsync(_http);
         await game.PlaceFleetAsync();
@@ -76,7 +77,7 @@ public class PrivacyTests : IClassFixture<ApiFactory>
             .Select(cell => cell.GetString())
             .Distinct()
             .ToList();
-        Assert.All(enemyCells, name => Assert.Contains(name, new[] { "Unknown", "Hit", "Miss" }));
+        Assert.All(enemyCells, name => Assert.Contains(name, new[] { "Unknown", "Hit", "Miss", "Sunk" }));
         Assert.DoesNotContain("Ship", enemyCells);
         Assert.DoesNotContain("Water", enemyCells);
     }

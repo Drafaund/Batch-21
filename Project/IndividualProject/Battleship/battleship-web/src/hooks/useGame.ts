@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { ApiError, type GameApi } from '../api/client'
 import { realtime as realRealtime, type ConnectionStatus, type GameEvent, type RealtimeClient } from '../api/realtime'
 import { clearSession, loadSession, saveSession, type Session } from '../api/session'
-import type { Coordinate, GameView, OpponentKind, Orientation, ShipType } from '../api/types'
+import type { Coordinate, EmoteCode, GameView, OpponentKind, Orientation, ShipType } from '../api/types'
 import { formatCoordinate } from '../domain/coordinates'
 import { describeResult } from '../domain/ships'
 
@@ -10,6 +10,12 @@ export interface LogEntry {
   id: number
   kind: 'you' | 'bot' | 'info'
   text: string
+}
+
+/** The last emote the opponent sent. The id changes with every one, so the same emote twice in a row still shows twice. */
+export interface IncomingEmote {
+  id: number
+  emote: EmoteCode
 }
 
 export interface GameController {
@@ -25,6 +31,8 @@ export interface GameController {
   log: LogEntry[]
   lastPlayerShot: Coordinate | null
   lastBotShots: Coordinate[]
+  /** The last emote the opponent sent, or null; only in a room. */
+  incomingEmote: IncomingEmote | null
   start(playerName: string, opponent: OpponentKind): Promise<void>
   join(playerName: string, code: string): Promise<void>
   /** Opens the real-time connection again after it gave up. */
@@ -32,6 +40,8 @@ export interface GameController {
   placeShip(type: ShipType, start: Coordinate, orientation: Orientation): Promise<void>
   placeRandomly(): Promise<void>
   fire(target: Coordinate): Promise<void>
+  /** Sends an emote to the opponent. It never marks the game as busy, so the board stays usable. */
+  sendEmote(emote: EmoteCode): Promise<void>
   reset(): void
   dismissError(): void
 }
@@ -51,7 +61,9 @@ export function useGame(api: GameApi, realtime: RealtimeClient = realRealtime): 
   const [lastBotShots, setLastBotShots] = useState<Coordinate[]>([])
   const [connection, setConnection] = useState<ConnectionStatus>('connecting')
   const [connectAttempt, setConnectAttempt] = useState(0)
+  const [incomingEmote, setIncomingEmote] = useState<IncomingEmote | null>(null)
   const nextLogId = useRef(1)
+  const nextEmoteId = useRef(1)
 
   const addLog = useCallback((entries: Omit<LogEntry, 'id'>[]) => {
     setLog((previous) => [...previous, ...entries.map((entry) => ({ ...entry, id: nextLogId.current++ }))].slice(-MAX_LOG_ENTRIES))
@@ -69,6 +81,7 @@ export function useGame(api: GameApi, realtime: RealtimeClient = realRealtime): 
     setLog([])
     setLastPlayerShot(null)
     setLastBotShots([])
+    setIncomingEmote(null)
     setConnection('connecting')
     setError(message)
   }, [])
@@ -130,6 +143,12 @@ export function useGame(api: GameApi, realtime: RealtimeClient = realRealtime): 
 
   const handleEvent = useCallback(
     (event: GameEvent) => {
+      // An emote is not part of the game: it has no view and does not touch the log.
+      if (event.type === 'EmoteReceived') {
+        setIncomingEmote({ id: nextEmoteId.current++, emote: event.emote })
+        return
+      }
+
       applyView(event.view)
       const opponentName = event.view.opponent?.name ?? 'Your opponent'
       switch (event.type) {
@@ -293,6 +312,22 @@ export function useGame(api: GameApi, realtime: RealtimeClient = realRealtime): 
     [addLog, api, applyView, requireSession, run],
   )
 
+  const sendEmote = useCallback(
+    async (emote: EmoteCode) => {
+      try {
+        const { code, token } = requireSession()
+        await api.sendEmote(code, token, emote)
+      } catch (caught) {
+        // The server refused it as too fast. The buttons already wait, so there is nothing to tell the player.
+        if (caught instanceof ApiError && caught.status === 429) {
+          return
+        }
+        handleError(caught)
+      }
+    },
+    [api, handleError, requireSession],
+  )
+
   const reset = useCallback(() => forgetGame(null), [forgetGame])
   const dismissError = useCallback(() => setError(null), [])
 
@@ -306,12 +341,14 @@ export function useGame(api: GameApi, realtime: RealtimeClient = realRealtime): 
     log,
     lastPlayerShot,
     lastBotShots,
+    incomingEmote,
     start,
     join,
     reconnect,
     placeShip,
     placeRandomly,
     fire,
+    sendEmote,
     reset,
     dismissError,
   }

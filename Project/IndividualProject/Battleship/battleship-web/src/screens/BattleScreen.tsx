@@ -1,10 +1,11 @@
-import type { Coordinate, GameView } from '../api/types'
+import type { Coordinate, EmoteCode, GameView } from '../api/types'
+import { EmotePanel } from '../components/EmotePanel'
 import { FleetBoard } from '../components/FleetBoard'
 import { FleetStatus } from '../components/FleetStatus'
 import { MessageLog } from '../components/MessageLog'
 import { TargetBoard } from '../components/TargetBoard'
 import { useCountdown } from '../hooks/useCountdown'
-import type { LogEntry } from '../hooks/useGame'
+import type { IncomingEmote, LogEntry } from '../hooks/useGame'
 
 interface BattleScreenProps {
   view: GameView
@@ -14,6 +15,8 @@ interface BattleScreenProps {
   lastBotShots: Coordinate[]
   onFire: (target: Coordinate) => void
   onPlayAgain: () => void
+  /** Only given in a room with another human; against a bot there is nobody to send an emote to. */
+  emotes?: { incoming: IncomingEmote | null; onSend: (emote: EmoteCode) => void }
 }
 
 /** What the banner says when the game is over. */
@@ -29,13 +32,15 @@ function describeEnd(view: GameView, opponentName: string): string {
   }
 }
 
-export function BattleScreen({ view, busy, log, lastPlayerShot, lastBotShots, onFire, onPlayAgain }: BattleScreenProps) {
+export function BattleScreen({ view, busy, log, lastPlayerShot, lastBotShots, onFire, onPlayAgain, emotes }: BattleScreenProps) {
   const finished = view.phase === 'Finished'
   const canFire = view.phase === 'InProgress' && view.yourTurn && !busy
   const opponentName = view.opponent?.name ?? 'The bot'
   const opponentAway = !finished && view.opponent !== null && !view.opponent.connected
   // Counts down from the seconds the server reported with this view; only a battle between two humans has a clock.
   const secondsLeft = useCountdown(finished ? null : view.turnSecondsRemaining, view.version)
+  // The own board says only "hit"; which hit cells belong to a sunk ship is known from the ships.
+  const sunkCells = view.ownShips.filter((ship) => ship.isSunk).flatMap((ship) => ship.positions)
 
   return (
     <div className="battle-screen">
@@ -63,9 +68,11 @@ export function BattleScreen({ view, busy, log, lastPlayerShot, lastBotShots, on
         </p>
       )}
 
+      {emotes && <EmotePanel incoming={emotes.incoming} opponentName={opponentName} onSend={emotes.onSend} />}
+
       <div className="boards">
         <TargetBoard board={view.enemyBoard} lastShot={lastPlayerShot} onFire={canFire ? onFire : undefined} />
-        <FleetBoard board={view.ownBoard} highlight={lastBotShots} />
+        <FleetBoard board={view.ownBoard} highlight={lastBotShots} sunkCells={sunkCells} />
       </div>
 
       <div className="side-panels">

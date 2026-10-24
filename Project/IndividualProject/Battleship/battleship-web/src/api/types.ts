@@ -6,11 +6,17 @@ export type ShotResult = 'Hit' | 'Miss' | 'Sunk' | 'Invalid'
 export type GamePhase = 'Lobby' | 'Placing' | 'InProgress' | 'Finished'
 export type OwnCell = 'Water' | 'Ship' | 'Hit' | 'Miss'
 
-/** There is deliberately no value for a ship: the server never says where enemy ships are. */
-export type EnemyCell = 'Unknown' | 'Hit' | 'Miss'
+/**
+ * There is deliberately no value for a ship that is afloat: the server never says where enemy ships are.
+ * `Sunk` marks the cells of a ship that was hit on every cell, so it reveals nothing the player has not shot at.
+ */
+export type EnemyCell = 'Unknown' | 'Hit' | 'Miss' | 'Sunk'
 
 /** `Human` opens a room for a second player instead of facing a bot. */
 export type OpponentKind = 'Random' | 'HuntTarget' | 'Human'
+
+/** What a player may say to the opponent in a room. The server knows only these codes. */
+export type EmoteCode = 'thumbsUp' | 'laugh' | 'wow' | 'angry' | 'target' | 'wave' | 'handshake' | 'clap'
 
 /** x is the column and y is the row, both zero-based. */
 export interface Coordinate {
