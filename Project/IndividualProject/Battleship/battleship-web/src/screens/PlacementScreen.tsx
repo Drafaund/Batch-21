@@ -21,6 +21,8 @@ export function PlacementScreen({ view, busy, onPlace, onPlaceRandomly }: Placem
   const { placed, remaining } = view.placement
   const selected = chosen && remaining.includes(chosen) ? chosen : remaining[0]
   const canPlaceRandomly = placed.length === 0
+  // Against a human, the game starts only when the other fleet is complete too.
+  const waitingForOpponent = remaining.length === 0
 
   useEffect(() => {
     function handleKey(event: KeyboardEvent) {
@@ -60,6 +62,12 @@ export function PlacementScreen({ view, busy, onPlace, onPlaceRandomly }: Placem
           Pick a ship, choose its direction, then click the board where its first cell should go. A horizontal ship extends to the
           right and a vertical ship downward.
         </p>
+
+        {waitingForOpponent && (
+          <p role="status" className="turn-info">
+            All your ships are placed. Waiting for {view.opponent?.name ?? 'your opponent'} to place theirs…
+          </p>
+        )}
 
         <ul className="ship-picker" aria-label="Ships to place">
           {SHIP_ORDER.map((type) => {

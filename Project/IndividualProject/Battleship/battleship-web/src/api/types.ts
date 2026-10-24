@@ -9,7 +9,8 @@ export type OwnCell = 'Water' | 'Ship' | 'Hit' | 'Miss'
 /** There is deliberately no value for a ship: the server never says where enemy ships are. */
 export type EnemyCell = 'Unknown' | 'Hit' | 'Miss'
 
-export type OpponentKind = 'Random' | 'HuntTarget'
+/** `Human` opens a room for a second player instead of facing a bot. */
+export type OpponentKind = 'Random' | 'HuntTarget' | 'Human'
 
 /** x is the column and y is the row, both zero-based. */
 export interface Coordinate {
@@ -50,10 +51,20 @@ export interface GameView {
   ownShips: ShipView[]
   enemyBoard: EnemyBoardView
   enemyShipsRemaining: number
+  /** `Forfeit` when a player stayed away too long, `Timeout` when the player to fire took too long. */
+  endReason?: 'Forfeit' | 'Timeout' | null
+  /** Seconds the player to fire has left when this view was built; only in a battle between two humans. */
+  turnSecondsRemaining?: number | null
 }
 
 export interface CreateGameResponse {
   code: string
+  playerToken: string
+  seat: number
+  view: GameView
+}
+
+export interface JoinGameResponse {
   playerToken: string
   seat: number
   view: GameView

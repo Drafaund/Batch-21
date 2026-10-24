@@ -17,17 +17,20 @@ internal sealed class GameClient
 
     private readonly HttpClient _http;
 
-    private GameClient(HttpClient http, string code, string token, GameView initialView)
+    private GameClient(HttpClient http, string code, string token, int seat, GameView initialView)
     {
         _http = http;
         Code = code;
         Token = token;
+        Seat = seat;
         InitialView = initialView;
     }
 
     public string Code { get; }
 
     public string Token { get; }
+
+    public int Seat { get; }
 
     public GameView InitialView { get; }
 
@@ -36,8 +39,23 @@ internal sealed class GameClient
         var response = await SendAsync(http, HttpMethod.Post, "/api/games", null, new { playerName = name, opponent });
         response.EnsureSuccessStatusCode();
         var created = await ReadAsync<CreateGameResponse>(response);
-        return new GameClient(http, created.Code, created.PlayerToken, created.View);
+        return new GameClient(http, created.Code, created.PlayerToken, created.Seat, created.View);
     }
+
+    /// <summary>Creates a room for two humans; the returned client is the player in seat 1.</summary>
+    public static Task<GameClient> CreateRoomAsync(HttpClient http, string name = "Ann") => CreateAsync(http, name, "Human");
+
+    /// <summary>Joins the room as the second player.</summary>
+    public static async Task<GameClient> JoinAsync(HttpClient http, string code, string name = "Bob")
+    {
+        var response = await JoinRawAsync(http, code, new { playerName = name });
+        response.EnsureSuccessStatusCode();
+        var joined = await ReadAsync<JoinGameResponse>(response);
+        return new GameClient(http, code, joined.PlayerToken, joined.Seat, joined.View);
+    }
+
+    public static Task<HttpResponseMessage> JoinRawAsync(HttpClient http, string code, object? body)
+        => SendAsync(http, HttpMethod.Post, $"/api/games/{code}/join", null, body);
 
     public static Task<HttpResponseMessage> SendAsync(HttpClient http, HttpMethod method, string url, string? token, object? body)
     {

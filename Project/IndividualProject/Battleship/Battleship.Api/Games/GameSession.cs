@@ -1,42 +1,45 @@
-using System.Security.Cryptography;
-using System.Text;
 using Battleship.Core;
 
 namespace Battleship.Api;
 
 /// <summary>
-/// One game of a human against a bot. Every command takes the session lock, so two requests for the same
-/// game never run at the same time. The session also records the shots the controller reports.
+/// One game: a human against a bot, or two humans online. Every command takes the session lock, so two
+/// requests for the same game never run at the same time. The session also records the shots the controller
+/// reports and, in an online game, collects the events for both players and sends them after the lock is released.
 /// </summary>
 internal sealed class GameSession
 {
     private readonly object _sync = new();
     private readonly GameController _controller;
-    private readonly OnlinePlayer _human;
-    private readonly Player _bot;
+    private readonly Seat[] _seats;
     private readonly Random _random;
+    private readonly IGameEventSink _sink;
+    private readonly GameOptions _options;
     private readonly ILogger<GameSession> _logger;
-    private readonly byte[] _tokenBytes;
     private readonly List<ShotRecord> _shots = new();
     private IPlayer? _winner;
+    private string? _endReason;
+    private Timer? _turnTimer;
+    private int _turnId;
+    private DateTime? _turnDeadline;
     private int _version = 1;
 
     public GameSession(
         string code,
-        string playerToken,
         GameController controller,
-        OnlinePlayer human,
-        Player bot,
+        Seat seat1,
+        Seat seat2,
         Random random,
+        IGameEventSink sink,
+        GameOptions options,
         ILogger<GameSession> logger)
     {
         Code = code;
-        PlayerToken = playerToken;
-        _tokenBytes = Encoding.UTF8.GetBytes(playerToken);
         _controller = controller;
-        _human = human;
-        _bot = bot;
+        _seats = new[] { seat1, seat2 };
         _random = random;
+        _sink = sink;
+        _options = options;
         _logger = logger;
 
         _controller.OnShotResolved += HandleShotResolved;
@@ -45,7 +48,11 @@ internal sealed class GameSession
 
     public string Code { get; }
 
-    public string PlayerToken { get; }
+    /// <summary>The token of the player who created the game (seat 1).</summary>
+    public string PlayerToken => _seats[0].Token!;
+
+    /// <summary>True when both seats are humans; events are only sent in such a game.</summary>
+    private bool IsOnline => !_seats[1].IsBot;
 
     /// <summary>The five ships every player gets, one per <see cref="ShipType"/>.</summary>
     public static List<IShip> CreateStandardShips()
@@ -53,63 +60,86 @@ internal sealed class GameSession
         return Enum.GetValues<ShipType>().Select(type => (IShip)new Ship(type)).ToList();
     }
 
-    public bool IsAuthorized(string? token)
+    /// <summary>The seat the token belongs to, or null when no seat in this game has that token.</summary>
+    public int? FindSeat(string? token)
     {
-        return token != null && CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(token), _tokenBytes);
+        return _seats.FirstOrDefault(seat => seat.Authorizes(token))?.Number;
     }
 
-    public GameView GetView()
+    public GameView GetView(int seat)
     {
         lock (_sync)
         {
-            return BuildView();
+            return BuildView(seat);
         }
     }
 
-    public GameView PlaceShip(ShipType type, Coordinate start, Orientation orientation)
+    /// <summary>Fills the second seat of an online game.</summary>
+    public JoinGameResponse Join(string playerName, string token)
     {
-        lock (_sync)
+        return Execute(events =>
+        {
+            var guest = _seats[1];
+            if (!IsOnline || guest.IsTaken)
+            {
+                throw ApiException.Conflict("This room is already full.");
+            }
+
+            guest.Take(playerName, token);
+            _version++;
+            _logger.LogInformation("Game {Code}: {Name} joined", Code, playerName);
+            events.Add(new SeatEvent(1, GameEventNames.PlayerJoined, new PlayerJoinedEvent(playerName, BuildView(1))));
+            return new JoinGameResponse(token, 2, BuildView(2));
+        });
+    }
+
+    public GameView PlaceShip(int seat, ShipType type, Coordinate start, Orientation orientation)
+    {
+        return Execute(events =>
         {
             EnsurePlacing();
-            if (_controller.GetFleet(_human).Ships.Any(placed => placed.Type == type))
+            var player = _seats[seat - 1].Player;
+            if (_controller.GetFleet(player).Ships.Any(placed => placed.Type == type))
             {
                 throw ApiException.Conflict($"The {type} is already placed.");
             }
 
-            if (!_controller.PlaceShip(_human, new Ship(type), start, orientation))
+            if (!_controller.PlaceShip(player, new Ship(type), start, orientation))
             {
                 throw ApiException.Conflict("The ship does not fit there (outside the board or overlapping another ship).");
             }
 
-            StartWhenFleetIsComplete();
+            StartWhenFleetsAreComplete(events);
             _version++;
-            return BuildView();
-        }
+            return BuildView(seat);
+        });
     }
 
-    public GameView PlaceShipsRandomly()
+    public GameView PlaceShipsRandomly(int seat)
     {
-        lock (_sync)
+        return Execute(events =>
         {
             EnsurePlacing();
-            if (_controller.GetFleet(_human).Ships.Count > 0)
+            var player = _seats[seat - 1].Player;
+            if (_controller.GetFleet(player).Ships.Count > 0)
             {
                 throw ApiException.Conflict("Random placement is only possible before the first ship is placed.");
             }
 
-            _controller.PlaceShipsRandomly(_human, CreateStandardShips(), _random);
-            StartWhenFleetIsComplete();
+            _controller.PlaceShipsRandomly(player, CreateStandardShips(), _random);
+            StartWhenFleetsAreComplete(events);
             _version++;
-            return BuildView();
-        }
+            return BuildView(seat);
+        });
     }
 
-    public ShotResponse Fire(Coordinate target)
+    public ShotResponse Fire(int seat, Coordinate target)
     {
-        lock (_sync)
+        return Execute(events =>
         {
             EnsureInProgress();
-            if (!ReferenceEquals(_controller.GetCurrentPlayer(), _human))
+            var shooter = _seats[seat - 1];
+            if (!ReferenceEquals(_controller.GetCurrentPlayer(), shooter.Player))
             {
                 throw ApiException.Conflict("It is not your turn.");
             }
@@ -120,40 +150,252 @@ internal sealed class GameSession
             {
                 PlayBotTurns();
                 _version++;
+                StartTurnClock();
+                AddShotEvents(events, firstNewShot);
             }
 
             var botShots = _shots
                 .Skip(firstNewShot)
-                .Where(shot => ReferenceEquals(shot.Shooter, _bot))
+                .Where(shot => _seats.Any(other => other.IsBot && ReferenceEquals(shot.Shooter, other.Player)))
                 .Select(shot => new BotShotView(CoordinateDto.From(shot.Target), shot.Result))
                 .ToList();
-            return new ShotResponse(result, botShots, BuildView());
+            return new ShotResponse(result, botShots, BuildView(seat));
+        });
+    }
+
+    /// <summary>A SignalR connection of this seat opened. The opponent is told when it is the first one.</summary>
+    public void Connect(int seat)
+    {
+        Execute(events =>
+        {
+            var current = _seats[seat - 1];
+            current.Connections++;
+            current.StopDropTimer();
+            if (current.Connections == 1 && IsOnline)
+            {
+                _version++;
+                AddConnectionEvent(events, current, connected: true);
+            }
+        });
+    }
+
+    /// <summary>A SignalR connection of this seat closed. When it was the last one during a battle, the clock starts.</summary>
+    public void Disconnect(int seat)
+    {
+        Execute(events =>
+        {
+            var current = _seats[seat - 1];
+            current.Connections = Math.Max(0, current.Connections - 1);
+            if (current.Connections > 0 || !IsOnline)
+            {
+                return;
+            }
+
+            _version++;
+            AddConnectionEvent(events, current, connected: false);
+            if (_controller.GetState() == GameState.InProgress)
+            {
+                current.StopDropTimer();
+                current.DropTimer = new Timer(_ => Forfeit(current), null, _options.OpponentTimeout, Timeout.InfiniteTimeSpan);
+            }
+        });
+    }
+
+    /// <summary>Ends the battle in favour of the other player, if <paramref name="absent"/> is still away.</summary>
+    private void Forfeit(Seat absent)
+    {
+        Execute(events =>
+        {
+            if (absent.IsConnected || _controller.GetState() != GameState.InProgress)
+            {
+                return;
+            }
+
+            var winner = OtherSeat(absent).Player;
+            _endReason = GameEndReasons.Forfeit;
+            _logger.LogInformation("Game {Code}: {Name} stayed away and forfeits", Code, absent.Player.Name);
+            _controller.EndGame(winner);
+            _version++;
+            AddEndEvent(events);
+        });
+    }
+
+    private void StartWhenFleetsAreComplete(List<SeatEvent> events)
+    {
+        var shipCount = Enum.GetValues<ShipType>().Length;
+        if (_seats.Any(seat => _controller.GetFleet(seat.Player).Ships.Count < shipCount))
+        {
+            return;
+        }
+
+        _controller.StartGame();
+        _version++;
+        StartTurnClock();
+        if (IsOnline)
+        {
+            AddForBothSeats(events, GameEventNames.GameStarted, seat => new GameStartedEvent(BuildView(seat)));
         }
     }
 
-    private void StartWhenFleetIsComplete()
+    /// <summary>Starts the clock of the player whose turn it is. It stops when that player fires or the game ends.</summary>
+    private void StartTurnClock()
     {
-        if (_controller.GetFleet(_human).Ships.Count == Enum.GetValues<ShipType>().Length)
+        StopTurnClock();
+        if (!IsOnline || _controller.GetState() != GameState.InProgress)
         {
-            _controller.StartGame();
+            return;
         }
+
+        var turn = ++_turnId;
+        var slow = _seats.First(seat => ReferenceEquals(seat.Player, _controller.GetCurrentPlayer()));
+        _turnDeadline = DateTime.UtcNow + _options.TurnTimeout;
+        _turnTimer = new Timer(_ => TurnExpired(turn, slow), null, _options.TurnTimeout, Timeout.InfiniteTimeSpan);
+    }
+
+    private void StopTurnClock()
+    {
+        _turnTimer?.Dispose();
+        _turnTimer = null;
+        _turnDeadline = null;
+        _turnId++;
+    }
+
+    /// <summary>The player to fire did nothing in time, so the other player wins. A shot that came in first makes <paramref name="turn"/> stale.</summary>
+    private void TurnExpired(int turn, Seat slow)
+    {
+        Execute(events =>
+        {
+            if (turn != _turnId || _controller.GetState() != GameState.InProgress)
+            {
+                return;
+            }
+
+            _endReason = GameEndReasons.Timeout;
+            _logger.LogInformation("Game {Code}: {Name} did not fire in time and loses", Code, slow.Player.Name);
+            _controller.EndGame(OtherSeat(slow).Player);
+            _version++;
+            AddEndEvent(events);
+        });
     }
 
     private void PlayBotTurns()
     {
-        while (_controller.GetState() == GameState.InProgress && ReferenceEquals(_controller.GetCurrentPlayer(), _bot))
+        while (_controller.GetState() == GameState.InProgress && _seats.Any(seat => seat.IsBot && ReferenceEquals(_controller.GetCurrentPlayer(), seat.Player)))
         {
             _controller.TakeTurn();
         }
     }
 
-    private GameView BuildView() => ViewMapper.Build(Code, _version, _controller, _human, _bot, _winner);
+    private void AddShotEvents(List<SeatEvent> events, int firstNewShot)
+    {
+        if (!IsOnline)
+        {
+            return;
+        }
+
+        foreach (var shot in _shots.Skip(firstNewShot))
+        {
+            AddForBothSeats(events, GameEventNames.ShotResolved, seat => new ShotResolvedEvent(
+                ReferenceEquals(shot.Shooter, _seats[seat - 1].Player) ? "you" : "opponent",
+                CoordinateDto.From(shot.Target),
+                shot.Result,
+                BuildView(seat)));
+        }
+
+        if (_controller.GetState() == GameState.Finished)
+        {
+            AddEndEvent(events);
+        }
+    }
+
+    private void AddEndEvent(List<SeatEvent> events)
+    {
+        AddForBothSeats(events, GameEventNames.GameEnded, seat => new GameEndedEvent(
+            ReferenceEquals(_winner, _seats[seat - 1].Player) ? "you" : "opponent",
+            BuildView(seat)));
+        StopTurnClock();
+        foreach (var seat in _seats)
+        {
+            seat.StopDropTimer();
+        }
+    }
+
+    private void AddConnectionEvent(List<SeatEvent> events, Seat changed, bool connected)
+    {
+        var other = OtherSeat(changed);
+        events.Add(new SeatEvent(other.Number, GameEventNames.OpponentConnection, new OpponentConnectionEvent(connected, BuildView(other.Number))));
+    }
+
+    private void AddForBothSeats(List<SeatEvent> events, string name, Func<int, object> payload)
+    {
+        foreach (var seat in _seats)
+        {
+            events.Add(new SeatEvent(seat.Number, name, payload(seat.Number)));
+        }
+    }
+
+    private Seat OtherSeat(Seat seat) => _seats[seat.Number == 1 ? 1 : 0];
+
+    private GamePhase Phase => _controller.GetState() switch
+    {
+        GameState.Setup => _seats[1].IsTaken ? GamePhase.Placing : GamePhase.Lobby,
+        GameState.InProgress => GamePhase.InProgress,
+        _ => GamePhase.Finished,
+    };
+
+    private GameView BuildView(int seat)
+    {
+        var viewer = _seats[seat - 1];
+        return ViewMapper.Build(Code, _version, _controller, viewer, OtherSeat(viewer), Phase, _winner, _endReason, TurnSecondsRemaining());
+    }
+
+    private int? TurnSecondsRemaining()
+    {
+        if (_turnDeadline is not { } deadline)
+        {
+            return null;
+        }
+
+        return Math.Max(0, (int)Math.Ceiling((deadline - DateTime.UtcNow).TotalSeconds));
+    }
+
+    /// <summary>Runs a command under the lock, then sends the events it produced.</summary>
+    private T Execute<T>(Func<List<SeatEvent>, T> command)
+    {
+        var events = new List<SeatEvent>();
+        T result;
+        lock (_sync)
+        {
+            result = command(events);
+        }
+
+        if (events.Count > 0)
+        {
+            _sink.Publish(Code, events);
+        }
+
+        return result;
+    }
+
+    private void Execute(Action<List<SeatEvent>> command)
+    {
+        Execute<object?>(events =>
+        {
+            command(events);
+            return null;
+        });
+    }
 
     private void EnsurePlacing()
     {
         if (_controller.GetState() != GameState.Setup)
         {
             throw ApiException.Conflict("Ships can only be placed before the game starts.");
+        }
+
+        if (Phase == GamePhase.Lobby)
+        {
+            throw ApiException.Conflict("Wait for the other player to join before placing ships.");
         }
     }
 
@@ -162,7 +404,9 @@ internal sealed class GameSession
         switch (_controller.GetState())
         {
             case GameState.Setup:
-                throw ApiException.Conflict("Place all your ships before firing.");
+                throw ApiException.Conflict(Phase == GamePhase.Lobby
+                    ? "Wait for the other player to join first."
+                    : "Place all your ships before firing.");
             case GameState.Finished:
                 throw ApiException.Conflict("The game is over.");
         }

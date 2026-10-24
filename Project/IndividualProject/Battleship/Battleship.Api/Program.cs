@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using Battleship.Api;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.SignalR;
 using Serilog;
 using Serilog.Events;
 
@@ -18,7 +19,13 @@ builder.Services.AddProblemDetails();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+builder.Services.AddSignalR().AddJsonProtocol(options =>
+    options.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter(allowIntegerValues: false)));
+
 builder.Services.AddSingleton<Func<Random>>(_ => () => new Random());
+// The timeouts come from the "Game" section of appsettings.json (or the environment, for example Game__TurnTimeout=00:00:20).
+builder.Services.AddSingleton(builder.Configuration.GetSection("Game").Get<GameOptions>() ?? new GameOptions());
+builder.Services.AddSingleton<IGameEventSink, HubGameEventSink>();
 builder.Services.AddSingleton<GameSessionFactory>();
 builder.Services.AddSingleton<GameStore>();
 
@@ -44,7 +51,10 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseHubAuthentication();
+
 app.MapGameEndpoints();
+app.MapHub<GameHub>(GameHub.Path);
 
 app.Run();
 

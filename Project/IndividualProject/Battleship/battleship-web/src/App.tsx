@@ -1,17 +1,21 @@
 import { api as realApi, type GameApi } from './api/client'
+import { realtime as realRealtime, type RealtimeClient } from './api/realtime'
 import { ErrorBanner } from './components/ErrorBanner'
 import { useGame } from './hooks/useGame'
 import { BattleScreen } from './screens/BattleScreen'
+import { LobbyScreen } from './screens/LobbyScreen'
 import { PlacementScreen } from './screens/PlacementScreen'
 import { StartScreen } from './screens/StartScreen'
 
 interface AppProps {
   /** The server to talk to. Tests pass a fake. */
   api?: GameApi
+  /** The real-time channel for games against another human. Tests pass a fake. */
+  realtime?: RealtimeClient
 }
 
-export default function App({ api = realApi }: AppProps) {
-  const game = useGame(api)
+export default function App({ api = realApi, realtime = realRealtime }: AppProps) {
+  const game = useGame(api, realtime)
   const { view } = game
 
   if (game.resuming) {
@@ -28,7 +32,24 @@ export default function App({ api = realApi }: AppProps) {
     <main>
       {game.error && <ErrorBanner message={game.error} onDismiss={game.dismissError} />}
 
-      {!view && <StartScreen busy={game.busy} onStart={game.start} />}
+      {game.online && view && game.connection !== 'connected' && (
+        <p role="status" className="hint connection-status">
+          {game.connection === 'offline' ? (
+            <>
+              The connection to the game was lost.{' '}
+              <button type="button" onClick={game.reconnect}>
+                Reconnect
+              </button>
+            </>
+          ) : (
+            'Connecting to the game…'
+          )}
+        </p>
+      )}
+
+      {!view && <StartScreen busy={game.busy} onStart={game.start} onJoin={game.join} />}
+
+      {view?.phase === 'Lobby' && <LobbyScreen view={view} onLeave={game.reset} />}
 
       {view?.phase === 'Placing' && (
         <PlacementScreen

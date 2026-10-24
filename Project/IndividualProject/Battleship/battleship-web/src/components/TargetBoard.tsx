@@ -10,7 +10,7 @@ interface TargetBoardProps {
 }
 
 const LOOK: Record<EnemyCell, { symbol: string; className: string; text: string }> = {
-  Unknown: { symbol: '·', className: 'unknown', text: 'not fired at yet' },
+  Unknown: { symbol: '', className: 'unknown', text: 'not fired at yet' },
   Hit: { symbol: '✕', className: 'hit', text: 'hit' },
   Miss: { symbol: '•', className: 'miss', text: 'miss' },
 }

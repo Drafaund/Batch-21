@@ -48,3 +48,17 @@ describe('session', () => {
     expect(() => clearSession()).not.toThrow()
   })
 })
+
+describe('session of an online room', () => {
+  it('remembers that the game is online', () => {
+    saveSession({ code: 'K7QF2', token: 'secret', online: true })
+
+    expect(loadSession()).toEqual({ code: 'K7QF2', token: 'secret', online: true })
+  })
+
+  it('treats anything but true as a game against a bot', () => {
+    window.localStorage.setItem('battleship.session', JSON.stringify({ code: 'K7QF2', token: 'secret', online: 'yes' }))
+
+    expect(loadSession()).toEqual({ code: 'K7QF2', token: 'secret' })
+  })
+})

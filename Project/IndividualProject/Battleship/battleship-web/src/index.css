@@ -6,12 +6,16 @@
   --border: #d3dae6;
   --accent: #1f5fbf;
   --accent-text: #ffffff;
-  --water: #cfe3f7;
-  --water-text: #5a8fc4;
+  --water: #4a90d0;
+  --water-deep: #2f78bd;
+  --water-light: #78b9ee;
   --ship: #4a5568;
+  --ship-light: #7b8798;
   --ship-text: #ffffff;
   --hit: #d6453d;
-  --miss: #f2c94c;
+  --hit-glow: #ffb347;
+  --miss: #ffffff;
+  --last-shot: #ffd43b;
   --ok: #2f9e44;
   --bad: #d6453d;
   --cell-size: clamp(1.7rem, 6.2vw, 2.5rem);
@@ -29,12 +33,15 @@
     --border: #2d3a50;
     --accent: #5b9bff;
     --accent-text: #0b1220;
-    --water: #1f3550;
-    --water-text: #6f98c8;
+    --water: #1b4f80;
+    --water-deep: #123a62;
+    --water-light: #2a6fa8;
     --ship: #aab4c6;
+    --ship-light: #d0d7e2;
     --ship-text: #11161f;
     --hit: #ff6b61;
-    --miss: #e5c04b;
+    --hit-glow: #ffc069;
+    --miss: #e8f4ff;
     --ok: #51cf66;
     --bad: #ff6b61;
   }
@@ -151,6 +158,7 @@ fieldset {
 }
 
 .board {
+  position: relative;
   display: grid;
   gap: 2px;
   align-items: center;
@@ -164,41 +172,111 @@ fieldset {
 }
 
 .cell {
+  position: relative;
   width: var(--cell-size);
   height: var(--cell-size);
   padding: 0;
   display: grid;
   place-items: center;
-  border-radius: 0.25rem;
+  /* Square corners: the sea is masked to square cells, so a rounded cell would let water show at its corners. */
+  border-radius: 0;
   border: 1px solid transparent;
   font-weight: 700;
   line-height: 1;
 }
 
+/* Sea: water cells are transparent, so the moving sea layer behind the board shows through.
+   The sea is one element that never re-renders, so clicking a cell cannot restart its animation. */
+.sea {
+  position: absolute;
+  grid-column: 2 / -1;
+  grid-row: 2 / -1;
+  inset: 0;
+  /* The sea fills the whole grid, but this mask keeps it only inside the cells. The 2px gaps between
+     cells are cut out, so the board panel shows there. Each tile is one cell plus one gap. */
+  --tile: calc(var(--cell-size) + 2px);
+  mask-image:
+    linear-gradient(to right, #000 var(--cell-size), transparent var(--cell-size)),
+    linear-gradient(to bottom, #000 var(--cell-size), transparent var(--cell-size));
+  mask-size:
+    var(--tile) 100%,
+    100% var(--tile);
+  mask-repeat: repeat-x, repeat-y;
+  mask-composite: intersect;
+  -webkit-mask-image:
+    linear-gradient(to right, #000 var(--cell-size), transparent var(--cell-size)),
+    linear-gradient(to bottom, #000 var(--cell-size), transparent var(--cell-size));
+  -webkit-mask-size:
+    var(--tile) 100%,
+    100% var(--tile);
+  -webkit-mask-repeat: repeat-x, repeat-y;
+  -webkit-mask-composite: source-in;
+  background-color: var(--water);
+  /* Two bands per tile: the colour at 0%, 50% and 100% matches, so tiles join without a seam. */
+  background-image:
+    linear-gradient(
+      135deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.16) 25%,
+      transparent 50%,
+      rgba(255, 255, 255, 0.16) 75%,
+      transparent 100%
+    ),
+    linear-gradient(
+      135deg,
+      var(--water-deep) 0%,
+      var(--water-light) 25%,
+      var(--water-deep) 50%,
+      var(--water-light) 75%,
+      var(--water-deep) 100%
+    );
+  background-size:
+    3rem 3rem,
+    5rem 5rem;
+  animation: sea-swell 2.4s linear infinite;
+}
+
 .cell.water,
-.cell.unknown {
-  background: var(--water);
-  color: var(--water-text);
+.cell.unknown,
+.cell.miss {
+  background: transparent;
+  /* A light line with a dark one just inside it: the border stays visible on both the light and the dark bands of the sea. */
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.6),
+    inset 0 0 0 2px rgba(0, 25, 60, 0.3);
 }
 
 .cell.ship {
-  background: var(--ship);
+  background: linear-gradient(180deg, var(--ship-light), var(--ship));
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.25);
   color: var(--ship-text);
 }
 
+/* Fire: the hit glows and pulses. */
 .cell.hit {
-  background: var(--hit);
+  background: radial-gradient(circle at 50% 55%, var(--hit-glow) 0%, var(--hit) 70%);
   color: #fff;
+  animation: hit-pulse 1.6s ease-in-out infinite;
 }
 
+/* Splash: the water stays, and a ring spreads out from the dot. */
 .cell.miss {
-  background: var(--water);
   color: var(--miss);
   font-size: 1.4em;
 }
 
+.cell.miss::after {
+  content: '';
+  position: absolute;
+  inset: 25%;
+  border: 2px solid var(--miss);
+  border-radius: 50%;
+  opacity: 0;
+  animation: splash-ring 2.4s ease-out infinite;
+}
+
 .cell.last-shot {
-  outline: 3px solid var(--accent);
+  outline: 3px solid var(--last-shot);
   outline-offset: -3px;
 }
 
@@ -212,9 +290,69 @@ fieldset {
   color: #fff;
 }
 
-button.cell.unknown:hover {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 35%, var(--water));
+button.cell.unknown {
+  cursor: crosshair;
+}
+
+button.cell.unknown:hover,
+button.cell.unknown:focus-visible {
+  border-color: var(--last-shot);
+  background: rgba(255, 255, 255, 0.28);
+  transform: scale(1.08);
+  z-index: 1;
+}
+
+/* Each layer moves by exactly one tile, so the loop has no visible jump. */
+@keyframes sea-swell {
+  from {
+    background-position:
+      0 0,
+      0 0;
+  }
+  to {
+    background-position:
+      -3rem 3rem,
+      5rem 5rem;
+  }
+}
+
+@keyframes hit-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--hit-glow) 0%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 10px 2px color-mix(in srgb, var(--hit-glow) 80%, transparent);
+  }
+}
+
+@keyframes splash-ring {
+  0% {
+    opacity: 0.9;
+    transform: scale(0.3);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+}
+
+/* Reduced motion keeps the sea flowing, only slower. The fire pulse and the splash ring,
+   which flash or expand, stay off. */
+@media (prefers-reduced-motion: reduce) {
+  .board .cell.hit,
+  .board .cell.miss::after {
+    animation: none !important;
+  }
+
+  .sea {
+    animation-duration: 6s;
+  }
+
+  .board .cell.miss::after {
+    opacity: 0.6;
+    transform: none;
+  }
 }
 
 /* Placement */
@@ -343,4 +481,43 @@ button.cell.unknown:hover {
   .placement-screen {
     grid-template-columns: 1fr;
   }
+}
+
+/* Online rooms */
+.lobby-screen {
+  max-width: 28rem;
+  margin: 2rem auto;
+  text-align: center;
+}
+
+.room-code {
+  font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+  font-size: 2.6rem;
+  font-weight: 700;
+  letter-spacing: 0.4rem;
+  margin: 0.4rem 0;
+  user-select: all;
+}
+
+.lobby-screen .actions {
+  justify-content: center;
+}
+
+.start-screen .actions {
+  align-items: center;
+}
+
+.connection-status {
+  margin: 0 0 0.6rem;
+}
+
+/* Turn clock */
+.countdown {
+  margin-left: 0.4rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.countdown.urgent {
+  color: var(--bad);
 }

@@ -2,6 +2,7 @@ import type {
   Coordinate,
   CreateGameResponse,
   GameView,
+  JoinGameResponse,
   OpponentKind,
   Orientation,
   ShipType,
@@ -22,6 +23,7 @@ export class ApiError extends Error {
 /** What the screens need from the server. Tests replace it with a fake. */
 export interface GameApi {
   createGame(playerName: string, opponent: OpponentKind): Promise<CreateGameResponse>
+  joinGame(code: string, playerName: string): Promise<JoinGameResponse>
   getGame(code: string, token: string): Promise<GameView>
   placeShip(code: string, token: string, type: ShipType, start: Coordinate, orientation: Orientation): Promise<GameView>
   placeShipsRandomly(code: string, token: string): Promise<GameView>
@@ -62,6 +64,7 @@ const gamePath = (code: string) => `/games/${encodeURIComponent(code)}`
 
 export const api: GameApi = {
   createGame: (playerName, opponent) => request('POST', '/games', undefined, { playerName, opponent }),
+  joinGame: (code, playerName) => request('POST', `${gamePath(code)}/join`, undefined, { playerName }),
   getGame: (code, token) => request('GET', gamePath(code), token),
   placeShip: (code, token, type, start, orientation) =>
     request('POST', `${gamePath(code)}/ships`, token, { type, start, orientation }),

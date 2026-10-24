@@ -16,7 +16,7 @@ interface FleetBoardProps {
 }
 
 const LOOK: Record<OwnCell, { symbol: string; className: string; text: string }> = {
-  Water: { symbol: '~', className: 'water', text: 'water' },
+  Water: { symbol: '', className: 'water', text: 'water' },
   Ship: { symbol: '■', className: 'ship', text: 'ship' },
   Hit: { symbol: '✕', className: 'hit', text: 'hit' },
   Miss: { symbol: '•', className: 'miss', text: 'miss' },

@@ -7,28 +7,63 @@ internal sealed class GameSessionFactory
 {
     private readonly Func<Random> _randomFactory;
     private readonly ILoggerFactory _loggerFactory;
+    private readonly IGameEventSink _sink;
+    private readonly GameOptions _options;
 
-    public GameSessionFactory(Func<Random> randomFactory, ILoggerFactory loggerFactory)
+    public GameSessionFactory(Func<Random> randomFactory, ILoggerFactory loggerFactory, IGameEventSink sink, GameOptions options)
     {
         _randomFactory = randomFactory;
         _loggerFactory = loggerFactory;
+        _sink = sink;
+        _options = options;
     }
 
-    /// <summary>Creates a game for one human against a bot; the bot's ships are placed straight away.</summary>
+    /// <summary>
+    /// Creates a game for the player in seat 1. Against a bot, the bot's ships are placed straight away;
+    /// against a human, seat 2 stays empty until <see cref="GameSession.Join"/>.
+    /// </summary>
     public GameSession Create(string code, string playerToken, string playerName, OpponentKind opponent)
     {
         var random = _randomFactory();
-        var human = new OnlinePlayer(1, playerName, new Board(), new Fleet());
-        Player bot = opponent switch
+        var first = new OnlinePlayer(1, playerName, new Board(), new Fleet());
+        var firstSeat = new Seat(1, first, isBot: false);
+        firstSeat.Take(playerName, playerToken);
+
+        Player second;
+        IShotStrategy secondStrategy;
+        switch (opponent)
         {
-            OpponentKind.Random => new RandomAIPlayer(2, "Bot Random", new Board(), new Fleet(), random),
-            OpponentKind.HuntTarget => new HuntTargetAIPlayer(2, "Bot Hunter", new Board(), new Fleet(), random),
-            _ => throw new ArgumentOutOfRangeException(nameof(opponent), opponent, "Only bot opponents are supported."),
-        };
+            case OpponentKind.Random:
+                var randomBot = new RandomAIPlayer(2, "Bot Random", new Board(), new Fleet(), random);
+                (second, secondStrategy) = (randomBot, randomBot);
+                break;
+            case OpponentKind.HuntTarget:
+                var huntBot = new HuntTargetAIPlayer(2, "Bot Hunter", new Board(), new Fleet(), random);
+                (second, secondStrategy) = (huntBot, huntBot);
+                break;
+            case OpponentKind.Human:
+                var guest = new OnlinePlayer(2, string.Empty, new Board(), new Fleet());
+                (second, secondStrategy) = (guest, guest);
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(opponent), opponent, "Unknown opponent.");
+        }
 
-        var controller = new GameController(human, human, bot, (IShotStrategy)bot);
-        controller.PlaceShipsRandomly(bot, GameSession.CreateStandardShips(), random);
+        var isBot = opponent != OpponentKind.Human;
+        var controller = new GameController(first, first, second, secondStrategy);
+        if (isBot)
+        {
+            controller.PlaceShipsRandomly(second, GameSession.CreateStandardShips(), random);
+        }
 
-        return new GameSession(code, playerToken, controller, human, bot, random, _loggerFactory.CreateLogger<GameSession>());
+        return new GameSession(
+            code,
+            controller,
+            firstSeat,
+            new Seat(2, second, isBot),
+            random,
+            _sink,
+            _options,
+            _loggerFactory.CreateLogger<GameSession>());
     }
 }

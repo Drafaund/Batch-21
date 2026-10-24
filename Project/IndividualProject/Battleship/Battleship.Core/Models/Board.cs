@@ -4,7 +4,7 @@ namespace Battleship.Core;
 public class Board : IBoard
 {
     /// <summary>Creates a board of empty cells; <c>Cells[x, y]</c> is the cell at column x, row y.</summary>
-    public Board()
+    public Board() //Otomatis berjlaan ketika objek dibuat
     {
         BoardSize = 10;
         Cells = new ICell[BoardSize, BoardSize];
@@ -18,7 +18,8 @@ public class Board : IBoard
     }
 
     /// <inheritdoc />
-    public int BoardSize { get; }
+    /// Hanya bisa di set diconstructor dan gak bisa diubah setelahnya
+    public int BoardSize { get; } 
 
     /// <summary>Indexed as <c>Cells[x, y]</c>: X is the column and Y is the row.</summary>
     public ICell[,] Cells { get; set; }

@@ -94,7 +94,7 @@ public class PrivacyTests : IClassFixture<ApiFactory>
             new[]
             {
                 "code", "version", "phase", "you", "opponent", "yourTurn", "winner",
-                "placement", "ownBoard", "ownShips", "enemyBoard", "enemyShipsRemaining",
+                "placement", "ownBoard", "ownShips", "enemyBoard", "enemyShipsRemaining", "endReason", "turnSecondsRemaining",
             },
             names);
         Assert.Equal(JsonValueKind.Number, document.RootElement.GetProperty("enemyShipsRemaining").ValueKind);

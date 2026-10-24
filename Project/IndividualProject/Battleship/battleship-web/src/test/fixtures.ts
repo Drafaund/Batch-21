@@ -1,5 +1,7 @@
+import { act } from '@testing-library/react'
 import { vi } from 'vitest'
 import type { GameApi } from '../api/client'
+import type { ConnectionStatus, GameEvent, RealtimeClient, RealtimeConnection, RealtimeHandlers } from '../api/realtime'
 import type { EnemyCell, GameView, OwnCell, ShipType, ShipView } from '../api/types'
 
 export const SHIP_TYPES: ShipType[] = ['Carrier', 'Battleship', 'Cruiser', 'Submarine', 'Destroyer']
@@ -63,9 +65,35 @@ export function makeFakeApi(overrides: Partial<GameApi> = {}): GameApi {
   // Every method is a spy, so a test can check how it was called.
   return {
     createGame: vi.fn(overrides.createGame ?? unexpected),
+    joinGame: vi.fn(overrides.joinGame ?? unexpected),
     getGame: vi.fn(overrides.getGame ?? unexpected),
     placeShip: vi.fn(overrides.placeShip ?? unexpected),
     placeShipsRandomly: vi.fn(overrides.placeShipsRandomly ?? unexpected),
     fire: vi.fn(overrides.fire ?? unexpected),
+  }
+}
+
+/** A fake SignalR connection: a test sends events and status changes as if they came from the server. */
+export function makeFakeRealtime() {
+  const stop = vi.fn(async () => {})
+  let handlers: RealtimeHandlers | null = null
+  const connect = vi.fn((_code: string, _token: string, given: RealtimeHandlers): RealtimeConnection => {
+    handlers = given
+    return { stop }
+  })
+  const current = () => {
+    if (!handlers) {
+      throw new Error('The game has not connected yet')
+    }
+    return handlers
+  }
+
+  return {
+    client: { connect } as RealtimeClient,
+    connect,
+    stop,
+    emit: (event: GameEvent) => act(() => current().onEvent(event)),
+    status: (value: ConnectionStatus) => act(() => current().onStatus(value)),
+    gone: () => act(() => current().onGone()),
   }
 }

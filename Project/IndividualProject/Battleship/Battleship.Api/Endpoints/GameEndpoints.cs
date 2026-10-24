@@ -11,6 +11,7 @@ internal static class GameEndpoints
     {
         var games = app.MapGroup("/api/games").WithTags("Games");
         games.MapPost("/", CreateGame);
+        games.MapPost("/{code}/join", JoinGame);
         games.MapGet("/{code}", GetGame);
         games.MapPost("/{code}/ships", PlaceShip);
         games.MapPost("/{code}/ships/random", PlaceShipsRandomly);
@@ -23,22 +24,23 @@ internal static class GameEndpoints
         var name = PlayerNameValidator.Validate(request?.PlayerName);
         if (request?.Opponent is not { } opponent)
         {
-            throw ApiException.BadRequest("opponent is required: Random or HuntTarget.");
-        }
-
-        if (opponent == OpponentKind.Human)
-        {
-            throw ApiException.BadRequest("Games against another human are not available yet. Use Random or HuntTarget.");
+            throw ApiException.BadRequest("opponent is required: Random, HuntTarget, or Human.");
         }
 
         var session = store.Create(name, opponent);
-        var response = new CreateGameResponse(session.Code, session.PlayerToken, Seat: 1, session.GetView());
+        var response = new CreateGameResponse(session.Code, session.PlayerToken, Seat: 1, session.GetView(1));
         return Results.Created($"/api/games/{session.Code}", response);
+    }
+
+    private static JoinGameResponse JoinGame(string code, JoinGameRequest? request, GameStore store)
+    {
+        return store.Join(code, PlayerNameValidator.Validate(request?.PlayerName));
     }
 
     private static GameView GetGame(string code, [FromHeader(Name = TokenHeader)] string? token, GameStore store)
     {
-        return store.GetAuthorized(code, token).GetView();
+        var access = store.GetAuthorized(code, token);
+        return access.Session.GetView(access.Seat);
     }
 
     private static GameView PlaceShip(
@@ -47,18 +49,19 @@ internal static class GameEndpoints
         [FromHeader(Name = TokenHeader)] string? token,
         GameStore store)
     {
-        var session = store.GetAuthorized(code, token);
+        var access = store.GetAuthorized(code, token);
         if (request?.Type is not { } type || request.Start is not { } start || request.Orientation is not { } orientation)
         {
             throw ApiException.BadRequest("type, start, and orientation are required.");
         }
 
-        return session.PlaceShip(type, start.ToCoordinate(), orientation);
+        return access.Session.PlaceShip(access.Seat, type, start.ToCoordinate(), orientation);
     }
 
     private static GameView PlaceShipsRandomly(string code, [FromHeader(Name = TokenHeader)] string? token, GameStore store)
     {
-        return store.GetAuthorized(code, token).PlaceShipsRandomly();
+        var access = store.GetAuthorized(code, token);
+        return access.Session.PlaceShipsRandomly(access.Seat);
     }
 
     private static ShotResponse Fire(
@@ -67,12 +70,12 @@ internal static class GameEndpoints
         [FromHeader(Name = TokenHeader)] string? token,
         GameStore store)
     {
-        var session = store.GetAuthorized(code, token);
+        var access = store.GetAuthorized(code, token);
         if (request?.Target is not { } target)
         {
             throw ApiException.BadRequest("target is required.");
         }
 
-        return session.Fire(target.ToCoordinate());
+        return access.Session.Fire(access.Seat, target.ToCoordinate());
     }
 }

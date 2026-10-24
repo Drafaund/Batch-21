@@ -6,6 +6,11 @@ namespace Battleship.Api.Tests;
 /// <summary>Small checks of the classes behind the endpoints, without HTTP.</summary>
 public class GameInternalsTests
 {
+    private static GameSessionFactory NewFactory()
+    {
+        return new GameSessionFactory(() => new Random(1), NullLoggerFactory.Instance, new RecordingSink(), new GameOptions());
+    }
+
     [Fact]
     public void OnlinePlayer_SelectTarget_Throws()
     {
@@ -40,43 +45,63 @@ public class GameInternalsTests
     }
 
     [Fact]
-    public void GameSessionFactory_HumanOpponent_IsNotSupportedYet()
+    public void GameSessionFactory_HumanOpponent_StartsInTheLobbyWithNothingPlaced()
     {
-        var factory = new GameSessionFactory(() => new Random(1), NullLoggerFactory.Instance);
+        var factory = NewFactory();
 
-        Assert.Throws<ArgumentOutOfRangeException>(() => factory.Create("ABCDE", "token", "Ann", OpponentKind.Human));
+        var session = factory.Create("ABCDE", "token", "Ann", OpponentKind.Human);
+
+        var view = session.GetView(1);
+        Assert.Equal(GamePhase.Lobby, view.Phase);
+        Assert.Null(view.Opponent);
+        Assert.Empty(view.OwnShips);
     }
 
     [Fact]
     public void GameSessionFactory_BotOpponent_PlacesTheBotFleetSoOnlyThePlayerHasToPlace()
     {
-        var factory = new GameSessionFactory(() => new Random(1), NullLoggerFactory.Instance);
+        var factory = NewFactory();
 
         var session = factory.Create("ABCDE", "token", "Ann", OpponentKind.HuntTarget);
 
-        var view = session.GetView();
+        var view = session.GetView(1);
         Assert.Equal(5, view.EnemyShipsRemaining);
         Assert.Empty(view.OwnShips);
     }
 
     [Fact]
-    public void GameSession_IsAuthorized_OnlyAcceptsTheExactToken()
+    public void GameSession_GameAgainstABot_SendsNoEvents()
     {
-        var factory = new GameSessionFactory(() => new Random(1), NullLoggerFactory.Instance);
+        var sink = new RecordingSink();
+        var factory = new GameSessionFactory(() => new Random(1), NullLoggerFactory.Instance, sink, new GameOptions());
         var session = factory.Create("ABCDE", "secret", "Ann", OpponentKind.Random);
 
-        Assert.True(session.IsAuthorized("secret"));
-        Assert.False(session.IsAuthorized("Secret"));
-        Assert.False(session.IsAuthorized("secre"));
-        Assert.False(session.IsAuthorized("secret "));
-        Assert.False(session.IsAuthorized(""));
-        Assert.False(session.IsAuthorized(null));
+        session.PlaceShipsRandomly(1);
+        session.Fire(1, new Coordinate(0, 0));
+        session.Connect(1);
+        session.Disconnect(1);
+
+        Assert.Empty(sink.Events);
+    }
+
+    [Fact]
+    public void GameSession_FindSeat_OnlyAcceptsTheExactToken()
+    {
+        var factory = NewFactory();
+        var session = factory.Create("ABCDE", "secret", "Ann", OpponentKind.Random);
+
+        Assert.Equal(1, session.FindSeat("secret"));
+        Assert.Null(session.FindSeat("Secret"));
+        Assert.Null(session.FindSeat("secre"));
+        Assert.Null(session.FindSeat("secret "));
+        Assert.Null(session.FindSeat(""));
+        Assert.Null(session.FindSeat(null));
     }
 
     [Fact]
     public void GameStore_CreateAndFind_ReturnsTheSameSessionForAnyLetterCase()
     {
-        var store = new GameStore(new GameSessionFactory(() => new Random(1), NullLoggerFactory.Instance));
+        var store = new GameStore(NewFactory());
 
         var session = store.Create("Ann", OpponentKind.Random);
 
@@ -87,7 +112,7 @@ public class GameInternalsTests
     [Fact]
     public void GameStore_Create_ManyGamesInParallel_AllGetDifferentCodes()
     {
-        var store = new GameStore(new GameSessionFactory(() => new Random(1), NullLoggerFactory.Instance));
+        var store = new GameStore(NewFactory());
 
         var sessions = Enumerable.Range(0, 200).AsParallel().Select(_ => store.Create("Ann", OpponentKind.Random)).ToList();
 

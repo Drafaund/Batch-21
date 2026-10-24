@@ -25,7 +25,17 @@ export function Board({ title, rows, onCellClick, onCellHover, onLeave }: BoardP
   return (
     <section className="board-panel" aria-label={title}>
       <h2>{title}</h2>
-      <div className="board" style={{ gridTemplateColumns: `auto repeat(${size}, var(--cell-size))` }} onMouseLeave={onLeave}>
+      <div
+        className="board"
+        style={{
+          gridTemplateColumns: `auto repeat(${size}, var(--cell-size))`,
+          // Rows are explicit too, so the sea layer's "2 / -1" reaches the last row.
+          gridTemplateRows: `auto repeat(${size}, var(--cell-size))`,
+        }}
+        onMouseLeave={onLeave}
+      >
+        {/* Animated sea behind the cells. Cells are re-created when they turn into buttons or boxes; this layer is not. */}
+        <div className="sea" aria-hidden="true" />
         <span className="axis" aria-hidden="true" />
         {Array.from({ length: size }, (_, x) => (
           <span key={`column-${x}`} className="axis" aria-hidden="true">

@@ -9,36 +9,33 @@ internal static class ViewMapper
         string code,
         int version,
         GameController controller,
-        OnlinePlayer human,
-        Player bot,
-        IPlayer? winner)
+        Seat viewer,
+        Seat opponent,
+        GamePhase phase,
+        IPlayer? winner,
+        string? endReason,
+        int? turnSecondsRemaining)
     {
         var state = controller.GetState();
-        var humanFleet = controller.GetFleet(human);
+        var ownFleet = controller.GetFleet(viewer.Player);
+        var started = phase is GamePhase.InProgress or GamePhase.Finished;
 
         return new GameView(
             code,
             version,
-            ToPhase(state),
-            new PlayerView(Seat: 1, human.Name),
-            new OpponentView(bot.Name, Connected: true),
-            YourTurn: state == GameState.InProgress && ReferenceEquals(controller.GetCurrentPlayer(), human),
-            winner == null ? null : ReferenceEquals(winner, human) ? "you" : "opponent",
-            BuildPlacement(humanFleet),
-            BuildOwnBoard(controller.GetBoard(human)),
-            humanFleet.Ships.Select(ToShipView).ToList(),
-            BuildEnemyBoard(controller.GetBoard(bot)),
-            controller.GetRemainingShips(bot));
-    }
-
-    private static GamePhase ToPhase(GameState state)
-    {
-        return state switch
-        {
-            GameState.Setup => GamePhase.Placing,
-            GameState.InProgress => GamePhase.InProgress,
-            _ => GamePhase.Finished,
-        };
+            phase,
+            new PlayerView(viewer.Number, viewer.Player.Name),
+            phase == GamePhase.Lobby ? null : new OpponentView(opponent.Player.Name, opponent.IsConnected),
+            YourTurn: state == GameState.InProgress && ReferenceEquals(controller.GetCurrentPlayer(), viewer.Player),
+            winner == null ? null : ReferenceEquals(winner, viewer.Player) ? "you" : "opponent",
+            BuildPlacement(ownFleet),
+            BuildOwnBoard(controller.GetBoard(viewer.Player)),
+            ownFleet.Ships.Select(ToShipView).ToList(),
+            BuildEnemyBoard(controller.GetBoard(opponent.Player)),
+            // Before the battle the other fleet may be incomplete, so the count would reveal how far they got.
+            started ? controller.GetRemainingShips(opponent.Player) : Enum.GetValues<ShipType>().Length,
+            endReason,
+            turnSecondsRemaining);
     }
 
     private static PlacementView BuildPlacement(IFleet fleet)

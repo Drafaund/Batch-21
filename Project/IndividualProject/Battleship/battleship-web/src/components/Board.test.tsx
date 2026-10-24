@@ -62,4 +62,15 @@ describe('Board', () => {
 
     expect(screen.getByRole('img', { name: 'the hit' })).toHaveClass('cell', 'hit', 'last-shot')
   })
+
+  it('keeps the same sea layer when cells turn from buttons into boxes', () => {
+    const { container, rerender } = render(<Board title="Test board" rows={rows(3, true)} />)
+    const sea = container.querySelector('.sea')
+    expect(sea).toHaveAttribute('aria-hidden', 'true')
+
+    rerender(<Board title="Test board" rows={rows(3, false)} />)
+
+    expect(screen.queryAllByRole('button')).toHaveLength(0)
+    expect(container.querySelector('.sea')).toBe(sea)
+  })
 })

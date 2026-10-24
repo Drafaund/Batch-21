@@ -167,11 +167,16 @@ public class CreateGameTests : IClassFixture<ApiFactory>
     }
 
     [Fact]
-    public async Task Create_HumanOpponent_Returns400BecauseItIsNotAvailableYet()
+    public async Task Create_HumanOpponent_Returns201AndWaitsInTheLobby()
     {
         var response = await PostAsync(new { playerName = "Ann", opponent = "Human" });
 
-        await GameClient.AssertProblemAsync(response, 400);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var created = await GameClient.ReadAsync<CreateGameResponse>(response);
+        Assert.Equal(1, created.Seat);
+        Assert.Equal(GamePhase.Lobby, created.View.Phase);
+        Assert.Null(created.View.Opponent);
+        Assert.False(created.View.YourTurn);
     }
 
     [Fact]

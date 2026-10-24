@@ -2,6 +2,8 @@
 export interface Session {
   code: string
   token: string
+  /** True in a room with another human: only then does the game listen for real-time events. */
+  online?: boolean
 }
 
 const KEY = 'battleship.session'
@@ -13,7 +15,10 @@ export function loadSession(): Session | null {
       return null
     }
     const value = JSON.parse(raw) as Partial<Session>
-    return typeof value.code === 'string' && typeof value.token === 'string' ? { code: value.code, token: value.token } : null
+    if (typeof value.code !== 'string' || typeof value.token !== 'string') {
+      return null
+    }
+    return value.online === true ? { code: value.code, token: value.token, online: true } : { code: value.code, token: value.token }
   } catch {
     return null
   }

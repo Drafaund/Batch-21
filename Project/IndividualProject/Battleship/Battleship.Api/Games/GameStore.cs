@@ -48,15 +48,22 @@ internal sealed class GameStore
     }
 
     /// <exception cref="ApiException">No game has this code (404) or the token is missing or wrong (401).</exception>
-    public GameSession GetAuthorized(string code, string? token)
+    public GameAccess GetAuthorized(string code, string? token)
     {
         var session = Find(code);
-        if (!session.IsAuthorized(token))
+        if (session.FindSeat(token) is not { } seat)
         {
             throw ApiException.Unauthorized("The X-Player-Token header is missing or wrong for this game.");
         }
 
-        return session;
+        return new GameAccess(session, seat);
+    }
+
+    /// <summary>Seats a second human in an online game and gives them their own token.</summary>
+    /// <exception cref="ApiException">No game has this code (404) or the room is not open (409).</exception>
+    public JoinGameResponse Join(string code, string playerName)
+    {
+        return Find(code).Join(playerName, NewToken());
     }
 
     private static string NewCode()
