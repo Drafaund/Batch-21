@@ -1,9 +1,5 @@
 namespace Battleship.Tests;
 
-/// <summary>
-/// A <see cref="Random"/> whose <c>Next(int)</c> returns the scripted indexes in order (each clamped to the range);
-/// the last index repeats once the script runs out.
-/// </summary>
 public class FakeRandom : Random
 {
     private readonly int[] _indexes;

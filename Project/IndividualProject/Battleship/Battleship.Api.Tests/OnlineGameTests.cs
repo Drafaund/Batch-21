@@ -4,7 +4,6 @@ using Battleship.Core;
 
 namespace Battleship.Api.Tests;
 
-/// <summary>Two humans in one room, driven over REST only (the SignalR side is in <see cref="HubTests"/>).</summary>
 public class OnlineGameTests : IClassFixture<ApiFactory>
 {
     private readonly HttpClient _http;

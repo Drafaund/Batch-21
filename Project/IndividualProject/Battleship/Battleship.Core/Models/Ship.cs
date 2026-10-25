@@ -1,9 +1,7 @@
 namespace Battleship.Core;
 
-/// <summary>A ship; its length follows from its type.</summary>
 public class Ship : IShip
 {
-    /// <summary>Creates an unplaced, undamaged ship of the given type.</summary>
     public Ship(ShipType type)
     {
         Type = type;
@@ -19,16 +17,10 @@ public class Ship : IShip
         Positions = new List<Coordinate>();
     }
 
-    /// <inheritdoc />
     public ShipType Type { get; }
-    /// <inheritdoc />
     public int Length { get; }
-    /// <inheritdoc />
     public Orientation Orientation { get; set; }
-    /// <inheritdoc />
     public List<Coordinate> Positions { get; set; }
-    /// <inheritdoc />
     public int HitCount { get; set; }
-    /// <inheritdoc />
     public bool IsSunk => HitCount >= Length;
 }

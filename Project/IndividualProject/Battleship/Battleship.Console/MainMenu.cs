@@ -2,19 +2,16 @@ using Spectre.Console;
 
 namespace Battleship.ConsoleApp;
 
-/// <summary>Asks which mode to play, the names of the human players, and the AI opponent.</summary>
 public class MainMenu
 {
     private readonly ConsoleScreen _screen;
 
-    /// <summary>Creates a menu that prompts on <paramref name="screen"/>.</summary>
     public MainMenu(ConsoleScreen screen)
     {
         ArgumentNullException.ThrowIfNull(screen);
         _screen = screen;
     }
 
-    /// <summary>Shows the menu and returns the choices.</summary>
     public GameSetup Ask()
     {
         _screen.Write(new FigletText("Battleship").Color(Color.Blue));

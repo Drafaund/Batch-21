@@ -1,6 +1,5 @@
 namespace Battleship.Api;
 
-/// <summary>An error the API reports to the caller as a problem details response with a fixed status code.</summary>
 internal sealed class ApiException : Exception
 {
     private ApiException(int statusCode, string title, string detail)

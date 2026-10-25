@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.TestHost;
 
 namespace Battleship.Api.Tests;
 
-/// <summary>A SignalR client for one player, connected to the in-memory test server over a real WebSocket.</summary>
 internal sealed class HubClient : IAsyncDisposable
 {
     private static readonly string[] EventNames =
@@ -56,7 +55,6 @@ internal sealed class HubClient : IAsyncDisposable
         return client;
     }
 
-    /// <summary>Builds a client without starting it, so a test can check that a wrong token or code is refused.</summary>
     public static HubClient Build(ApiFactory factory, string code, string? token)
     {
         var server = factory.Server;
@@ -81,7 +79,6 @@ internal sealed class HubClient : IAsyncDisposable
 
     public Task StopAsync() => _connection.StopAsync();
 
-    /// <summary>Waits until an event with this name (and, if given, a payload that fits) has arrived, and returns it.</summary>
     public async Task<T> WaitForAsync<T>(string name, Func<T, bool>? predicate = null)
     {
         var deadline = DateTime.UtcNow.AddSeconds(5);

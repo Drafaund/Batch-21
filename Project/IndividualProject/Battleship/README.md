@@ -77,8 +77,8 @@ Shots and the winner are also written to a log file next to the executable:
 
 ```
 Battleship/
-├── battleship.v2.mmd        class diagram (Mermaid)
-├── battleship.v3.mmd        proposal: v2 plus TakeTurn(Coordinate) for the web, waiting for review
+├── battleship.v3.mmd        class diagram (Mermaid), approved: v2 plus TakeTurn(Coordinate) for the web
+├── battleship.v2.mmd        the previous version of the class diagram
 ├── WEB_DESIGN.md            design of the web version: endpoints, events, DTOs, session rules
 ├── Battleship.Core/         game logic, no UI
 │   ├── Enums/               ShipType, Orientation, GameState, ShotResult, CellState
@@ -113,10 +113,10 @@ The web version adds these rules on top of Core (details in [WEB_DESIGN.md](WEB_
 - **The server decides everything.** A browser only says "fire at D-4". Commands go over REST; SignalR only pushes events from the server to the browsers.
 - **One lock per game.** Every command, and every timer, runs inside `GameSession` under one lock. The events it produces are sent after the lock is released.
 - **Each player sees only their own view.** `ViewMapper` builds a `GameView` per seat. The enemy board type has no value for an unhit ship, so it cannot leak where the ships are.
-- **A player is identified by a random token** that the server gives them for one game (header `X-Player-Token`, or the `access_token` query value for the SignalR connection). There is no login.
+- **A player is identified by a random token** that the server gives them for one game (header `X-Player-Token`, or the `access_token` query value for the SignalR connection). It is an opaque token that the server looks up in its own memory, not a JWT, and there is no login. A JWT would pay off with accounts, or when servers cannot share state; here the token lives only as long as one game and every request already needs the game in memory.
 - **Every error has the same shape** (RFC 7807 problem details), including errors raised by the framework.
 
-The class diagram is in [battleship.v2.mmd](battleship.v2.mmd). It covers `Battleship.Core`; the console and API classes are outside it.
+The class diagram is in [battleship.v3.mmd](battleship.v3.mmd). It covers `Battleship.Core`, including the enumerations and the `Coordinate` struct; the console and API classes are outside it.
 
 ## Tests
 
@@ -141,7 +141,7 @@ Coverage of `Battleship.Core` (from `dotnet test Battleship.Tests --collect:"XPl
 dotnet test Battleship.Api.Tests
 ```
 
-183 test cases (162 test methods), all passing. They start the API in memory and talk to it over HTTP (and over SignalR for online games) with seeded randomness, so a run is repeatable.
+186 test cases (165 test methods), all passing. They start the API in memory and talk to it over HTTP (and over SignalR for online games) with seeded randomness, so a run is repeatable.
 
 | Area | Test methods |
 |---|---|
@@ -158,8 +158,31 @@ dotnet test Battleship.Api.Tests
 | Emotes | 14 |
 | Turn limit and absent players | 11 |
 | Classes behind the endpoints | 11 |
+| Load: many games at once, two players firing at the same moment, SignalR delivery | 3 |
 
-Coverage of `Battleship.Api`: 96.1% of lines and 91.5% of branches.
+Coverage of `Battleship.Api`: 96.1% of lines and 91.0% of branches.
+
+#### Load tests
+
+`LoadTests` checks that the API stays correct with many games at once, and prints how fast it is:
+
+- **Many bot games at once.** Every game is played to the end over HTTP, and every request is timed.
+- **Two players firing at the same moment.** The server must serve them one at a time: no error other than 409 ("not your turn"), the shots of the two players differ by at most one, and the number of shots the server counted equals the number it accepted.
+- **Many online games at once.** Each has two SignalR connections. Every shot must reach both players exactly once, each with its own view version.
+
+```
+dotnet test Battleship.Api.Tests --filter "FullyQualifiedName~LoadTests" --logger "console;verbosity=detailed"
+```
+
+The size of the run can be changed with `LOAD_GAMES`, `LOAD_CONCURRENCY`, and `LOAD_ONLINE_GAMES`. The API runs in memory inside the test process (no network), and the test client shares the CPU with it, so the numbers show the cost of the API itself and not of a real network. One run in Release on a laptop with 12 logical processors:
+
+| Clients at once | Requests per second | Latency p50 | p95 | p99 |
+|---|---|---|---|---|
+| 1 | 627 | 1.1 ms | 2.9 ms | 4.3 ms |
+| 10 | 1,662 | 3.9 ms | 11.3 ms | 25.0 ms |
+| 100 | 2,178 | 40.3 ms | 85.5 ms | 117.1 ms |
+
+With 100 clients the machine is saturated, so requests wait in a queue: latency is about the number of clients divided by the requests per second (100 / 2,178 is about 46 ms). A single request still takes about a millisecond. Fifty online games (100 SignalR connections) delivered 1,000 events in 1.9 s. A finished game keeps about 22 KB in memory, and finished games are not removed yet (see [Planned](#planned)).
 
 ### Front end tests
 
@@ -183,7 +206,8 @@ Online play has been tried with two browsers on one machine, not yet over two re
 
 | Step | What |
 |---|---|
-| Hardening | A rate limit (only emotes are limited now), cleanup of finished and abandoned games, a limit on the number of games, and a stress test of `GameSession` with many commands at once |
+| Hardening | A rate limit (only emotes are limited now), cleanup of finished and abandoned games, and a limit on the number of games |
+| Scaling | State outside the process and a SignalR backplane (for example Redis) before running more than one server |
 | Hosting | A Docker image that serves the API and the built React files, a free host, and a CI build |
 | Optional | Rematch, Salvo mode (shots per turn equal to the ships still afloat), a database |
 

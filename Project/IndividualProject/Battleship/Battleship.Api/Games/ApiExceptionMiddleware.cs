@@ -1,10 +1,5 @@
 namespace Battleship.Api;
 
-/// <summary>
-/// Turns the errors the API raises on purpose (<see cref="ApiException"/>) and unreadable requests into
-/// problem details responses. They are expected, so they are logged as information, not as errors.
-/// Any other exception passes on to the exception handler, which answers 500.
-/// </summary>
 internal sealed class ApiExceptionMiddleware
 {
     private readonly RequestDelegate _next;

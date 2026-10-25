@@ -3,7 +3,6 @@ using Spectre.Console;
 
 namespace Battleship.ConsoleApp;
 
-/// <summary>Draws boards with Spectre.Console. A board drawn without ships shows only hits and misses.</summary>
 public class BoardRenderer
 {
     // Two boards side by side need about 95 columns; narrower terminals get them stacked.
@@ -12,14 +11,12 @@ public class BoardRenderer
 
     private readonly ConsoleScreen _screen;
 
-    /// <summary>Creates a renderer that draws on <paramref name="screen"/>.</summary>
     public BoardRenderer(ConsoleScreen screen)
     {
         ArgumentNullException.ThrowIfNull(screen);
         _screen = screen;
     }
 
-    /// <summary>The player's own fleet (with ships) next to the enemy board (hits and misses only).</summary>
     public void ShowPlayerView(IBoard ownBoard, IBoard enemyBoard)
     {
         ShowSideBySide(
@@ -27,7 +24,6 @@ public class BoardRenderer
             BuildTable(enemyBoard, "Target board", showShips: false));
     }
 
-    /// <summary>Two fleets, both with ships. Only for bot games and the end of a game.</summary>
     public void ShowFleets(string leftTitle, IBoard left, string rightTitle, IBoard right)
     {
         ShowSideBySide(
@@ -35,7 +31,6 @@ public class BoardRenderer
             BuildTable(right, Markup.Escape(rightTitle), showShips: true));
     }
 
-    /// <summary>Draws one board with its ships, for ship placement.</summary>
     public void ShowFleet(string title, IBoard board)
     {
         _screen.Write(BuildTable(board, title, showShips: true));

@@ -1,9 +1,5 @@
 namespace Battleship.Core;
 
-/// <summary>
-/// Facade for one two-player game: setup, turns, shots, and the winner. All game rules live here.
-/// The class is split by stage: this file (state and queries), Setup, Turn, and Rules.
-/// </summary>
 public partial class GameController
 {
     private readonly IShotStrategy _strategy1;
@@ -11,13 +7,6 @@ public partial class GameController
     private IPlayer _currentPlayer;
     private int _turnNumber;
 
-    /// <summary>Creates a game in the <see cref="GameState.Setup"/> state; <paramref name="player1"/> moves first.</summary>
-    /// <param name="player1">The first player.</param>
-    /// <param name="strategy1">Shot strategy of <paramref name="player1"/> (usually the same object).</param>
-    /// <param name="player2">The second player; must be a different object from <paramref name="player1"/>.</param>
-    /// <param name="strategy2">Shot strategy of <paramref name="player2"/> (usually the same object).</param>
-    /// <exception cref="ArgumentNullException">Any argument is null.</exception>
-    /// <exception cref="ArgumentException">Both players are the same object.</exception>
     public GameController(IPlayer player1, IShotStrategy strategy1, IPlayer player2, IShotStrategy strategy2)
     {
         ArgumentNullException.ThrowIfNull(player1);
@@ -38,37 +27,26 @@ public partial class GameController
         State = GameState.Setup;
     }
 
-    /// <summary>The player who moves first.</summary>
     public IPlayer Player1 { get; }
 
-    /// <summary>The player who moves second.</summary>
     public IPlayer Player2 { get; }
 
-    /// <summary>The current phase of the game.</summary>
     public GameState State { get; private set; }
 
-    /// <summary>Raised after every shot, including <see cref="ShotResult.Invalid"/> ones.</summary>
     public event Action<IPlayer, Coordinate, ShotResult>? OnShotResolved;
 
-    /// <summary>Raised once, with the winner, when the game ends.</summary>
     public event Action<IPlayer>? OnGameEnded;
 
-    /// <summary>The player whose turn it is.</summary>
     public IPlayer GetCurrentPlayer() => _currentPlayer;
 
-    /// <summary>The current phase of the game.</summary>
     public GameState GetState() => State;
 
-    /// <summary>The board of <paramref name="player"/>.</summary>
-    /// <exception cref="ArgumentException">The player is not part of this game.</exception>
     public IBoard GetBoard(IPlayer player)
     {
         EnsureParticipant(player);
         return player.Board;
     }
 
-    /// <summary>The fleet of <paramref name="player"/>.</summary>
-    /// <exception cref="ArgumentException">The player is not part of this game.</exception>
     public IFleet GetFleet(IPlayer player)
     {
         EnsureParticipant(player);

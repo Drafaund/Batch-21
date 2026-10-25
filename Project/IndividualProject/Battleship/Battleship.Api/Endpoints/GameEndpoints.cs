@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Battleship.Api;
 
-/// <summary>The REST endpoints of a game. They check the token and the input, then call the session.</summary>
 internal static class GameEndpoints
 {
     private const string TokenHeader = "X-Player-Token";

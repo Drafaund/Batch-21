@@ -1,6 +1,5 @@
 namespace Battleship.Api.Tests;
 
-/// <summary>Keeps the events a session publishes, so a test can read them without a SignalR connection.</summary>
 internal sealed class RecordingSink : IGameEventSink
 {
     private readonly object _sync = new();

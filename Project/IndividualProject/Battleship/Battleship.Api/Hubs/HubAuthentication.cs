@@ -2,11 +2,6 @@ using Microsoft.Extensions.Primitives;
 
 namespace Battleship.Api;
 
-/// <summary>
-/// Checks the room code and the player token before a SignalR connection is negotiated, so a wrong token
-/// gets the same 401 or 404 problem details as the REST endpoints. Browsers cannot set headers on a WebSocket,
-/// so the token also comes as the <c>access_token</c> query value, which is what the SignalR client sends.
-/// </summary>
 internal static class HubAuthentication
 {
     private const string BearerPrefix = "Bearer ";

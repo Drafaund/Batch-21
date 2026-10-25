@@ -3,11 +3,6 @@ using Battleship.Core;
 
 namespace Battleship.Api.Tests;
 
-/// <summary>
-/// The enemy board marks the cells of a ship that is already sunk, and only those. Both fleets stand where
-/// <see cref="GameClient.PlaceFleetAsync"/> puts them: Carrier row 0, Battleship row 1, Cruiser row 2,
-/// Submarine row 3, Destroyer row 4, all starting at column 0. The Destroyer covers (0,4) and (1,4).
-/// </summary>
 public class SunkCellTests : IClassFixture<ApiFactory>
 {
     private readonly HttpClient _http;
@@ -26,7 +21,6 @@ public class SunkCellTests : IClassFixture<ApiFactory>
         return (ann, bob);
     }
 
-    /// <summary>Ann fires at each target in turn; Bob answers every shot with a miss far from the fleet.</summary>
     private static async Task<ShotResponse> AnnFiresAsync(GameClient ann, GameClient bob, params (int X, int Y)[] targets)
     {
         ShotResponse? last = null;

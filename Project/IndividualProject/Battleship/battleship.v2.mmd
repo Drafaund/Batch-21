@@ -1,4 +1,5 @@
 classDiagram
+    direction TB
     GameController ..> IPlayer : manages two players
     GameController ..> IShotStrategy : asks each player for a target
     GameController ..> IBoard : reads and updates
@@ -24,6 +25,33 @@ classDiagram
     Fleet *-- IShip
     IShip <|.. Ship
 
+    %% Arrows to the value types: dashed = parameter or return value, solid = property or field.
+    %% Cell, Ship, and the three players share the arrows of the interface they implement
+    %% (ICell, IShip, IShotStrategy), so they have none of their own.
+    %% Coordinate (struct)
+    GameController ..> Coordinate
+    IShotStrategy ..> Coordinate
+    ICoordinateInput ..> Coordinate
+    ICell --> Coordinate
+    IShip --> Coordinate
+
+    %% ShotResult (enumeration)
+    GameController ..> ShotResult
+    IShotStrategy ..> ShotResult
+
+    %% GameState (enumeration)
+    GameController --> GameState
+
+    %% Orientation (enumeration)
+    GameController ..> Orientation
+    IShip --> Orientation
+
+    %% ShipType (enumeration)
+    IShip --> ShipType
+
+    %% CellState (enumeration)
+    ICell --> CellState
+
     class GameController {
         +IPlayer Player1 : readonly
         +IPlayer Player2 : readonly
@@ -33,7 +61,7 @@ classDiagram
         +GameState State : readonly
         -int _turnNumber
 
-        +event Action~IPlayer, Coordinate, ShotResult~ OnShotResolved
+        +event Action#60;IPlayer, Coordinate, ShotResult#62; OnShotResolved
         +event Action~IPlayer~ OnGameEnded
 
         +GameController(IPlayer player1, IShotStrategy strategy1, IPlayer player2, IShotStrategy strategy2)
@@ -48,6 +76,7 @@ classDiagram
         +PlaceShip(IPlayer player, IShip ship, Coordinate start, Orientation orientation) bool
         +PlaceShipsRandomly(IPlayer player, IEnumerable~IShip~ ships, Random random) void
         +TakeTurn() ShotResult
+        +TakeTurn(Coordinate target) ShotResult
         +ProcessShot(IPlayer shooter, Coordinate target) ShotResult
         +SwitchTurn() void
         +CheckWinner() IPlayer?
@@ -113,7 +142,6 @@ classDiagram
 
         +Board()
     }
-    note for Board "Cells is indexed Cells[x, y]: X = column, Y = row"
     class ICell {
         <<interface>>
         +Coordinate Position : readonly
@@ -157,43 +185,46 @@ classDiagram
 
         +Ship(ShipType type)
     }
-    class Coordinate {
-        <<struct>>
-        +int X : readonly
-        +int Y : readonly
 
-        +Coordinate(int x, int y)
-    }
-    class ShipType {
-        <<enumeration>>
-        Carrier,
-        Battleship,
-        Cruiser,
-        Submarine,
-        Destroyer,
-    }
-    class Orientation {
-        <<enumeration>>
-        Vertical,
-        Horizontal,
-    }
-    class GameState {
-        <<enumeration>>
-        Setup,
-        InProgress,
-        Finished,
-    }
-    class ShotResult {
-        <<enumeration>>
-        Hit,
-        Miss,
-        Invalid,
-        Sunk,
-    }
-    class CellState {
-        <<enumeration>>
-        Empty,
-        Ship,
-        Hit,
-        Miss,
+    namespace ValueTypes {
+        class Coordinate {
+            <<struct>>
+            +int X : readonly
+            +int Y : readonly
+
+            +Coordinate(int x, int y)
+        }
+        class ShotResult {
+            <<enumeration>>
+            Hit,
+            Miss,
+            Invalid,
+            Sunk,
+        }
+        class GameState {
+            <<enumeration>>
+            Setup,
+            InProgress,
+            Finished,
+        }
+        class Orientation {
+            <<enumeration>>
+            Vertical,
+            Horizontal,
+        }
+        class ShipType {
+            <<enumeration>>
+            Carrier,
+            Battleship,
+            Cruiser,
+            Submarine,
+            Destroyer,
+        }
+        class CellState {
+            <<enumeration>>
+            Empty,
+            Ship,
+            Hit,
+            Miss,
+        }
     }

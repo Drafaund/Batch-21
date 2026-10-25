@@ -3,13 +3,6 @@ namespace Battleship.Core;
 // Turn stage: asking for a target, resolving the shot, and passing the turn.
 public partial class GameController
 {
-    /// <summary>
-    /// Plays one shot for the current player, asking that player's strategy for the target.
-    /// A valid shot passes the turn, or ends the game when it sinks the last enemy ship;
-    /// an <see cref="ShotResult.Invalid"/> shot keeps the turn.
-    /// </summary>
-    /// <returns>The result of the shot.</returns>
-    /// <exception cref="InvalidOperationException">The game is not in progress.</exception>
     public ShotResult TakeTurn()
     {
         EnsureInProgress();
@@ -17,14 +10,6 @@ public partial class GameController
         return TakeTurn(CurrentStrategy.SelectTarget());
     }
 
-    /// <summary>
-    /// Plays one shot for the current player at a target that comes from outside, such as a web request.
-    /// It does everything <see cref="TakeTurn()"/> does after the target is known: resolves the shot,
-    /// tells the current player's strategy the result, then ends the game or passes the turn.
-    /// </summary>
-    /// <param name="target">The cell to fire at; it may be outside the board, which gives <see cref="ShotResult.Invalid"/>.</param>
-    /// <returns>The result of the shot.</returns>
-    /// <exception cref="InvalidOperationException">The game is not in progress.</exception>
     public ShotResult TakeTurn(Coordinate target)
     {
         EnsureInProgress();
@@ -53,13 +38,6 @@ public partial class GameController
         return result;
     }
 
-    /// <summary>Resolves a shot from <paramref name="shooter"/> at the opponent's board and raises <see cref="OnShotResolved"/>.</summary>
-    /// <returns>
-    /// <see cref="ShotResult.Invalid"/> for a target outside the board or already fired at; otherwise
-    /// <see cref="ShotResult.Miss"/>, <see cref="ShotResult.Hit"/>, or <see cref="ShotResult.Sunk"/>.
-    /// </returns>
-    /// <exception cref="ArgumentException">The shooter is not part of this game.</exception>
-    /// <exception cref="InvalidOperationException">The game is not in progress.</exception>
     public ShotResult ProcessShot(IPlayer shooter, Coordinate target)
     {
         EnsureParticipant(shooter);
@@ -70,7 +48,6 @@ public partial class GameController
         return result;
     }
 
-    /// <summary>Passes the turn to the other player.</summary>
     public void SwitchTurn()
     {
         _currentPlayer = GetOpponent(_currentPlayer);

@@ -2,10 +2,6 @@ using Microsoft.AspNetCore.SignalR;
 
 namespace Battleship.Api;
 
-/// <summary>
-/// The real-time channel of a game. It only pushes events; the clients send commands over REST.
-/// The token was already checked by <see cref="HubAuthentication"/> before the connection opened.
-/// </summary>
 internal sealed class GameHub : Hub
 {
     public const string Path = "/hubs/game";

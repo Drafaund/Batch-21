@@ -6,7 +6,6 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Battleship.Api.Tests;
 
-/// <summary>Same as <see cref="ApiFactory"/>, but a player who drops out of a battle forfeits after a fraction of a second.</summary>
 public sealed class FastForfeitApiFactory : ApiFactory
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -20,7 +19,6 @@ public sealed class FastForfeitApiFactory : ApiFactory
     }
 }
 
-/// <summary>Two SignalR clients in one room: what each of them is told, and when.</summary>
 public class HubTests : IClassFixture<FastForfeitApiFactory>
 {
     private readonly FastForfeitApiFactory _factory;

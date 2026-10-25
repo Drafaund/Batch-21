@@ -5,7 +5,6 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Battleship.Api.Tests;
 
-/// <summary>Same as <see cref="ApiFactory"/>, but a seat may send an emote again after a fraction of a second.</summary>
 public sealed class FastEmoteApiFactory : ApiFactory
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -19,7 +18,6 @@ public sealed class FastEmoteApiFactory : ApiFactory
     }
 }
 
-/// <summary>Emotes between two humans: who may send one, what the other player is told, and the limits.</summary>
 public class EmoteTests : IClassFixture<FastEmoteApiFactory>
 {
     private readonly FastEmoteApiFactory _factory;

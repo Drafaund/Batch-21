@@ -2,7 +2,6 @@ using Battleship.Core;
 
 namespace Battleship.Api;
 
-/// <summary>Builds what a player may see. This is the only place that decides which board data leaves the server.</summary>
 internal static class ViewMapper
 {
     public static GameView Build(

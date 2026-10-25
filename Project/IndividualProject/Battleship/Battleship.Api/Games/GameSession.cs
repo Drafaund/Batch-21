@@ -2,11 +2,6 @@ using Battleship.Core;
 
 namespace Battleship.Api;
 
-/// <summary>
-/// One game: a human against a bot, or two humans online. Every command takes the session lock, so two
-/// requests for the same game never run at the same time. The session also records the shots the controller
-/// reports and, in an online game, collects the events for both players and sends them after the lock is released.
-/// </summary>
 internal sealed class GameSession
 {
     private readonly object _sync = new();
@@ -48,19 +43,15 @@ internal sealed class GameSession
 
     public string Code { get; }
 
-    /// <summary>The token of the player who created the game (seat 1).</summary>
     public string PlayerToken => _seats[0].Token!;
 
-    /// <summary>True when both seats are humans; events are only sent in such a game.</summary>
     private bool IsOnline => !_seats[1].IsBot;
 
-    /// <summary>The five ships every player gets, one per <see cref="ShipType"/>.</summary>
     public static List<IShip> CreateStandardShips()
     {
         return Enum.GetValues<ShipType>().Select(type => (IShip)new Ship(type)).ToList();
     }
 
-    /// <summary>The seat the token belongs to, or null when no seat in this game has that token.</summary>
     public int? FindSeat(string? token)
     {
         return _seats.FirstOrDefault(seat => seat.Authorizes(token))?.Number;
@@ -74,7 +65,6 @@ internal sealed class GameSession
         }
     }
 
-    /// <summary>Fills the second seat of an online game.</summary>
     public JoinGameResponse Join(string playerName, string token)
     {
         return Execute(events =>
@@ -163,10 +153,6 @@ internal sealed class GameSession
         });
     }
 
-    /// <summary>
-    /// Passes an emote on to the other player. An emote is not part of the game: the version does not change
-    /// and nothing is stored, so a player who was away never sees the ones sent meanwhile.
-    /// </summary>
     public void SendEmote(int seat, string emote)
     {
         Execute(events =>
@@ -191,7 +177,6 @@ internal sealed class GameSession
         });
     }
 
-    /// <summary>A SignalR connection of this seat opened. The opponent is told when it is the first one.</summary>
     public void Connect(int seat)
     {
         Execute(events =>
@@ -207,7 +192,6 @@ internal sealed class GameSession
         });
     }
 
-    /// <summary>A SignalR connection of this seat closed. When it was the last one during a battle, the clock starts.</summary>
     public void Disconnect(int seat)
     {
         Execute(events =>
@@ -229,7 +213,6 @@ internal sealed class GameSession
         });
     }
 
-    /// <summary>Ends the battle in favour of the other player, if <paramref name="absent"/> is still away.</summary>
     private void Forfeit(Seat absent)
     {
         Execute(events =>
@@ -265,7 +248,6 @@ internal sealed class GameSession
         }
     }
 
-    /// <summary>Starts the clock of the player whose turn it is. It stops when that player fires or the game ends.</summary>
     private void StartTurnClock()
     {
         StopTurnClock();
@@ -288,7 +270,6 @@ internal sealed class GameSession
         _turnId++;
     }
 
-    /// <summary>The player to fire did nothing in time, so the other player wins. A shot that came in first makes <paramref name="turn"/> stale.</summary>
     private void TurnExpired(int turn, Seat slow)
     {
         Execute(events =>
@@ -387,7 +368,6 @@ internal sealed class GameSession
         return Math.Max(0, (int)Math.Ceiling((deadline - DateTime.UtcNow).TotalSeconds));
     }
 
-    /// <summary>Runs a command under the lock, then sends the events it produced.</summary>
     private T Execute<T>(Func<List<SeatEvent>, T> command)
     {
         var events = new List<SeatEvent>();

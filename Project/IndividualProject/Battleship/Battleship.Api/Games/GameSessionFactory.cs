@@ -2,7 +2,6 @@ using Battleship.Core;
 
 namespace Battleship.Api;
 
-/// <summary>Composition root for one game: creates the players, boards, fleets, and the controller.</summary>
 internal sealed class GameSessionFactory
 {
     private readonly Func<Random> _randomFactory;
@@ -18,10 +17,6 @@ internal sealed class GameSessionFactory
         _options = options;
     }
 
-    /// <summary>
-    /// Creates a game for the player in seat 1. Against a bot, the bot's ships are placed straight away;
-    /// against a human, seat 2 stays empty until <see cref="GameSession.Join"/>.
-    /// </summary>
     public GameSession Create(string code, string playerToken, string playerName, OpponentKind opponent)
     {
         var random = _randomFactory();

@@ -2,7 +2,6 @@ using System.Text.Json;
 
 namespace Battleship.Api.Tests;
 
-/// <summary>The enemy ships must never leave the server: not before the game, not during it, not as a hint.</summary>
 public class PrivacyTests : IClassFixture<ApiFactory>
 {
     private readonly HttpClient _http;

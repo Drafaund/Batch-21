@@ -2,7 +2,6 @@ namespace Battleship.Tests;
 
 using Battleship.Core;
 
-/// <summary>Tests for <c>TakeTurn(Coordinate target)</c>: a turn whose target comes from outside, such as a web request.</summary>
 public class GameControllerTakeTurnTargetTests
 {
     [Fact]

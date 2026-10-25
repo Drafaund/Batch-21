@@ -3,10 +3,8 @@ using Battleship.Core;
 
 namespace Battleship.ConsoleApp;
 
-/// <summary>Converts between text like <c>D-4</c> (row letter, column number) and <see cref="Coordinate"/>.</summary>
 public static class CoordinateFormat
 {
-    /// <summary>Accepts <c>D-4</c> and <c>D4</c>, any letter case, inside a board of <paramref name="boardSize"/>.</summary>
     public static bool TryParse(string? text, int boardSize, [NotNullWhen(true)] out Coordinate? coordinate)
     {
         coordinate = null;
@@ -32,7 +30,6 @@ public static class CoordinateFormat
         return true;
     }
 
-    /// <summary>Formats a coordinate as row letter and column number, such as <c>D-4</c>.</summary>
     public static string Format(Coordinate coordinate)
     {
         return coordinate.Y is >= 0 and < 26

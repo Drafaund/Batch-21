@@ -1,11 +1,9 @@
 namespace Battleship.Api;
 
-/// <summary>Checks the name a player types.</summary>
 internal static class PlayerNameValidator
 {
     public const int MaxLength = 20;
 
-    /// <summary>Returns the trimmed name, or throws a 400 when it is empty, too long, or has control characters.</summary>
     public static string Validate(string? name)
     {
         var trimmed = name?.Trim() ?? string.Empty;

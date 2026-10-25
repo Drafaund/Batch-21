@@ -8,7 +8,6 @@ public class HuntTargetAIPlayerTests
 
     private static bool AreNeighbours(Coordinate a, Coordinate b) => Math.Abs(a.X - b.X) + Math.Abs(a.Y - b.Y) == 1;
 
-    /// <summary>Fires <paramref name="count"/> shots, reporting <paramref name="result"/> for each.</summary>
     private static List<Coordinate> Fire(HuntTargetAIPlayer bot, int count, ShotResult result)
     {
         var shots = new List<Coordinate>();

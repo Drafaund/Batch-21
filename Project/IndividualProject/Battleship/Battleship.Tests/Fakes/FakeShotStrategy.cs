@@ -2,7 +2,6 @@ namespace Battleship.Tests;
 
 using Battleship.Core;
 
-/// <summary>Shoots a scripted list of targets in order and records every result it receives.</summary>
 public class FakeShotStrategy : IShotStrategy
 {
     private readonly Queue<Coordinate> _targets;

@@ -3,7 +3,6 @@ using Spectre.Console;
 
 namespace Battleship.ConsoleApp;
 
-/// <summary>Drives one console game: ship placement, then turns until there is a winner.</summary>
 public class GameRunner
 {
     private readonly GameController _controller;
@@ -15,7 +14,6 @@ public class GameRunner
     private readonly bool _hotSeat;
     private readonly bool _botsOnly;
 
-    /// <summary>Creates a runner for one game.</summary>
     public GameRunner(
         GameController controller,
         Participant first,
@@ -40,7 +38,6 @@ public class GameRunner
         _botsOnly = !first.IsHuman && !second.IsHuman;
     }
 
-    /// <summary>Places the fleets, plays turns until there is a winner, then shows the final boards.</summary>
     public void Run()
     {
         PlaceFleets();
@@ -140,7 +137,6 @@ public class GameRunner
         _renderer.ShowFleets(_first.Player.Name, BoardOf(_first), _second.Player.Name, BoardOf(_second));
     }
 
-    /// <summary>Clears the screen and waits so the next player can sit down before their board is shown.</summary>
     private void HandOver(string message)
     {
         _screen.Clear();

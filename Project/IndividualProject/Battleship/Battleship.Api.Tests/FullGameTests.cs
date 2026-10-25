@@ -13,7 +13,6 @@ public class FullGameTests : IClassFixture<ApiFactory>
         _http = factory.CreateClient();
     }
 
-    /// <summary>Fires at the cells row by row until the game ends, checking every response on the way.</summary>
     private static async Task<(ShotResponse Last, int Shots, List<BotShotView> BotShots)> PlayToTheEndAsync(GameClient game)
     {
         ShotResponse? last = null;

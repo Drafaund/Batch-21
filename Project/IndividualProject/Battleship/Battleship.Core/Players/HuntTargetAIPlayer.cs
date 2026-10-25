@@ -1,9 +1,5 @@
 namespace Battleship.Core;
 
-/// <summary>
-/// A bot that hunts at random until it hits, then fires at the neighbours of the hit (target mode)
-/// until the ship sinks. It only knows the results of its own shots, never the enemy board.
-/// </summary>
 public class HuntTargetAIPlayer : Player, IShotStrategy
 {
     private static readonly (int Dx, int Dy)[] NeighbourOffsets = { (0, -1), (0, 1), (-1, 0), (1, 0) };
@@ -12,7 +8,6 @@ public class HuntTargetAIPlayer : Player, IShotStrategy
     private readonly HashSet<Coordinate> _firedShots = new();
     private readonly Queue<Coordinate> _targetQueue = new();
 
-    /// <summary>Creates a bot that picks targets with <paramref name="random"/>; pass a seeded <see cref="Random"/> for repeatable games.</summary>
     public HuntTargetAIPlayer(int id, string name, IBoard board, IFleet fleet, Random random)
         : base(id, name, board, fleet)
     {
@@ -20,8 +15,6 @@ public class HuntTargetAIPlayer : Player, IShotStrategy
         _random = random;
     }
 
-    /// <summary>Next queued neighbour of a hit if there is one, otherwise a random unfired cell.</summary>
-    /// <exception cref="InvalidOperationException">Every cell has already been fired at.</exception>
     public Coordinate SelectTarget()
     {
         var target = DequeueTarget() ?? PickRandomUnfiredCell();
@@ -29,7 +22,6 @@ public class HuntTargetAIPlayer : Player, IShotStrategy
         return target;
     }
 
-    /// <summary>On a hit, queues the neighbours; once the ship sinks, drops the queue and goes back to hunting.</summary>
     public void ReceiveResult(Coordinate target, ShotResult result)
     {
         _firedShots.Add(target);

@@ -2,10 +2,6 @@ namespace Battleship.Tests;
 
 using Battleship.Core;
 
-/// <summary>
-/// Builds a <see cref="GameController"/> with two fake players. Both players use the same fixed layout:
-/// Carrier (0,0), Battleship (0,1), Cruiser (0,2), Submarine (0,3), Destroyer (0,4), all horizontal.
-/// </summary>
 public class TestGame
 {
     public static readonly ShipType[] AllTypes = Enum.GetValues<ShipType>();
@@ -25,7 +21,6 @@ public class TestGame
     public FakeShotStrategy Strategy2 { get; }
     public GameController Controller { get; }
 
-    /// <summary>Row index (Y) the given ship type occupies in the fixed layout.</summary>
     public static int RowOf(ShipType type) => (int)type;
 
     public static IEnumerable<Coordinate> CellsOf(ShipType type)

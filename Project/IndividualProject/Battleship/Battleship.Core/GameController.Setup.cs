@@ -5,8 +5,6 @@ public partial class GameController
 {
     private const int MaxRandomPlacementAttempts = 1000;
 
-    /// <summary>Starts the game. Both fleets must be complete (one ship per <see cref="ShipType"/>).</summary>
-    /// <exception cref="InvalidOperationException">The game is not in Setup or a fleet is incomplete.</exception>
     public void StartGame()
     {
         if (State != GameState.Setup)
@@ -22,12 +20,6 @@ public partial class GameController
         State = GameState.InProgress;
     }
 
-    /// <summary>Checks whether the ship fits; never changes any state.</summary>
-    /// <returns>
-    /// True when the game is in Setup, the ship type is not in the fleet yet, and every cell of the ship
-    /// is inside the board and free. Horizontal ships extend to the right, vertical ships downward.
-    /// </returns>
-    /// <exception cref="ArgumentException">The player is not part of this game.</exception>
     public bool ValidatePlaceShip(IPlayer player, IShip ship, Coordinate start, Orientation orientation)
     {
         EnsureParticipant(player);
@@ -49,8 +41,6 @@ public partial class GameController
             .All(position => IsInside(board, position) && !board.Cells[position.X, position.Y].IsOccupied);
     }
 
-    /// <summary>Places the ship if valid: fills Positions and Orientation, marks the cells, adds it to the fleet.</summary>
-    /// <returns>False, with nothing changed, when the placement is not valid.</returns>
     public bool PlaceShip(IPlayer player, IShip ship, Coordinate start, Orientation orientation)
     {
         if (!ValidatePlaceShip(player, ship, start, orientation))
@@ -72,8 +62,6 @@ public partial class GameController
         return true;
     }
 
-    /// <summary>Places every given ship at a random valid spot. The same seed gives the same placement.</summary>
-    /// <exception cref="InvalidOperationException">A ship could not be placed (for example its type is already in the fleet).</exception>
     public void PlaceShipsRandomly(IPlayer player, IEnumerable<IShip> ships, Random random)
     {
         ArgumentNullException.ThrowIfNull(ships);

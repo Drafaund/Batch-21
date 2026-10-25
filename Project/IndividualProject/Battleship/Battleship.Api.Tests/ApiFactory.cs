@@ -6,10 +6,6 @@ using Microsoft.Extensions.Logging;
 
 namespace Battleship.Api.Tests;
 
-/// <summary>
-/// Starts the API in memory for a test class. Every game gets its own <see cref="Random"/> with a
-/// seed that counts up, so the bot's ship layout and shots are the same on every run.
-/// </summary>
 public class ApiFactory : WebApplicationFactory<Program>
 {
     private int _seed;
@@ -24,7 +20,6 @@ public class ApiFactory : WebApplicationFactory<Program>
         _seed = firstSeed;
     }
 
-    /// <summary>Captures every log message the API writes.</summary>
     public LogCapture Logs { get; } = new();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)

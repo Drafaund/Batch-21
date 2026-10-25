@@ -3,7 +3,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Battleship.Api.Tests;
 
-/// <summary>Small checks of the classes behind the endpoints, without HTTP.</summary>
 public class GameInternalsTests
 {
     private static GameSessionFactory NewFactory()

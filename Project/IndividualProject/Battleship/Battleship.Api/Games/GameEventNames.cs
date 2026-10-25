@@ -1,6 +1,5 @@
 namespace Battleship.Api;
 
-/// <summary>The names of the SignalR events, as listed in WEB_DESIGN.md.</summary>
 internal static class GameEventNames
 {
     public const string PlayerJoined = "PlayerJoined";

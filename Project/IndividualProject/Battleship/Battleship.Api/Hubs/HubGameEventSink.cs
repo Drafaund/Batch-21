@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.SignalR;
 
 namespace Battleship.Api;
 
-/// <summary>Sends session events to the SignalR group of each seat. Failures are logged; they never reach the player who caused the event.</summary>
 internal sealed class HubGameEventSink : IGameEventSink
 {
     private readonly IHubContext<GameHub> _hub;

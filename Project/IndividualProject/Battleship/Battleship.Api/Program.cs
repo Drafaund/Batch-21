@@ -58,7 +58,6 @@ app.MapHub<GameHub>(GameHub.Path);
 
 app.Run();
 
-/// <summary>Makes the entry point visible to the integration tests.</summary>
 public partial class Program
 {
 }

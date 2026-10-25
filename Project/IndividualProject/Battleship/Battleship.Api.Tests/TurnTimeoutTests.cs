@@ -4,7 +4,6 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Battleship.Api.Tests;
 
-/// <summary>Same as <see cref="ApiFactory"/>, but the player to fire loses after a fraction of a second.</summary>
 public sealed class FastTurnApiFactory : ApiFactory
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -18,7 +17,6 @@ public sealed class FastTurnApiFactory : ApiFactory
     }
 }
 
-/// <summary>The player whose turn it is must fire in time, or the other player wins.</summary>
 public class TurnTimeoutTests : IClassFixture<FastTurnApiFactory>, IClassFixture<ApiFactory>
 {
     private readonly FastTurnApiFactory _fast;

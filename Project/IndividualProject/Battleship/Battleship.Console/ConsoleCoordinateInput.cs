@@ -3,13 +3,11 @@ using Spectre.Console;
 
 namespace Battleship.ConsoleApp;
 
-/// <summary>Reads a target such as <c>D-4</c> or <c>D4</c> with a Spectre.Console prompt that asks again until the format is right.</summary>
 public class ConsoleCoordinateInput : ICoordinateInput
 {
     private readonly ConsoleScreen _screen;
     private readonly int _boardSize;
 
-    /// <summary>Creates an input that prompts on <paramref name="screen"/> for a board of <paramref name="boardSize"/> cells per side.</summary>
     public ConsoleCoordinateInput(ConsoleScreen screen, int boardSize)
     {
         ArgumentNullException.ThrowIfNull(screen);
@@ -17,7 +15,6 @@ public class ConsoleCoordinateInput : ICoordinateInput
         _boardSize = boardSize;
     }
 
-    /// <inheritdoc />
     public Coordinate ReadCoordinate()
     {
         var lastLetter = (char)('A' + _boardSize - 1);

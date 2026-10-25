@@ -99,7 +99,6 @@ public class GetGameTests : IClassFixture<ApiFactory>
         Assert.Equal(System.Net.HttpStatusCode.NotFound, response.StatusCode);
     }
 
-    /// <summary>Compares two views by their JSON, since a view holds arrays and lists.</summary>
     private sealed class GameViewComparer : IEqualityComparer<GameView>
     {
         public bool Equals(GameView? x, GameView? y) => Serialize(x) == Serialize(y);

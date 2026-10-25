@@ -5,7 +5,6 @@ using Battleship.Core;
 
 namespace Battleship.Api.Tests;
 
-/// <summary>A small client for one game, so the tests read like a conversation with the API.</summary>
 internal sealed class GameClient
 {
     public const string TokenHeader = "X-Player-Token";
@@ -42,10 +41,8 @@ internal sealed class GameClient
         return new GameClient(http, created.Code, created.PlayerToken, created.Seat, created.View);
     }
 
-    /// <summary>Creates a room for two humans; the returned client is the player in seat 1.</summary>
     public static Task<GameClient> CreateRoomAsync(HttpClient http, string name = "Ann") => CreateAsync(http, name, "Human");
 
-    /// <summary>Joins the room as the second player.</summary>
     public static async Task<GameClient> JoinAsync(HttpClient http, string code, string name = "Bob")
     {
         var response = await JoinRawAsync(http, code, new { playerName = name });
@@ -79,7 +76,6 @@ internal sealed class GameClient
         return value!;
     }
 
-    /// <summary>Checks the status code and that the body is problem details carrying the same status.</summary>
     public static async Task AssertProblemAsync(HttpResponseMessage response, int expectedStatus)
     {
         Assert.Equal(expectedStatus, (int)response.StatusCode);
@@ -128,7 +124,6 @@ internal sealed class GameClient
         return await ReadAsync<ShotResponse>(response);
     }
 
-    /// <summary>Places the five ships in rows 0 to 4, all horizontal, which also starts the game.</summary>
     public async Task<GameView> PlaceFleetAsync()
     {
         GameView? view = null;

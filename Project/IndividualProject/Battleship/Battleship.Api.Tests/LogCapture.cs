@@ -3,7 +3,6 @@ using Microsoft.Extensions.Logging;
 
 namespace Battleship.Api.Tests;
 
-/// <summary>A logger provider that keeps the formatted messages so a test can look at them.</summary>
 public sealed class LogCapture : ILoggerProvider, ILogger
 {
     private readonly ConcurrentQueue<(LogLevel Level, string Message)> _entries = new();
