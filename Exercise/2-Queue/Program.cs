@@ -1,84 +1,196 @@
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices.Marshalling;
+Console.WriteLine("--- Week 1 ---");
+var week1 = new Week1Queue();
+week1.Enqueue("A");
+week1.Enqueue("B");
+week1.Process();
+week1.Process();
+week1.Process();
+week1.Process();
 
-var queue = new Queue<string>();
-
-Enqueue("A");
-Enqueue("B");
-EnqueueVip("C");
-Process();
-Process();
-Process();
-
-void Enqueue(string value)
-{
-    queue.Enqueue(value);
-    Console.WriteLine($"Queued {value}");
-}
-
-void EnqueueVip(string value)
-{
-    var items = new Queue<string>();
-    items.Enqueue(value);
-
-    foreach (var item in queue)
-    {
-        items.Enqueue(item);
-    }
-
-    queue = items;
-    Console.WriteLine($"VIP Queued: {value}");
-}
-
-void Process()
-{
-    if (queue.Count == 0)
-    {
-        Console.WriteLine("Queue is empty");
-    }
-    Console.WriteLine($"Processed {queue.Dequeue()}");
-}
-
-#region Week 3 - Priority Queue
-
-var priorityItems = new List<(string Value, int Priority)>();
+Console.WriteLine();
+Console.WriteLine("--- Week 2 ---");
+var week2 = new Week2VipQueue();
+week2.Enqueue("A");
+week2.Enqueue("B");
+week2.EnqueueVip("C");
+week2.Process();
+week2.Process();
+week2.Process();
 
 Console.WriteLine();
 Console.WriteLine("--- Week 3 ---");
-EnqueueWithPriority("A", 1);
-EnqueueWithPriority("B", 5);
-EnqueueWithPriority("C", 5);
-ProcessByPriority();
-ProcessByPriority();
+var week3 = new Week3PriorityQueue();
+week3.Enqueue("A", 1);
+week3.Enqueue("B", 5);
+week3.Enqueue("C", 5);
+week3.Process();
+week3.Process();
 
-void EnqueueWithPriority(string value, int priority)
-{
-    priorityItems.Add((value, priority));
-    Console.WriteLine($"Queued {value} with priority {priority}");
-}
+Console.WriteLine();
+Console.WriteLine("--- Week 4 ---");
+var week4 = new KeywordPriorityQueue();
+week4.AddRule("urgent", 10);
+week4.AddRule("normal", 5);
+week4.Enqueue("normal");
+week4.Enqueue("urgent");
+week4.Enqueue("other");
+week4.Process();
+week4.Process();
+week4.Process();
+week4.Process();
 
-void ProcessByPriority()
+#region Week 1 - Basic Queue
+
+class Week1Queue
 {
-    if (priorityItems.Count == 0)
+    private readonly Queue<string> _items = new();
+
+    public void Enqueue(string value)
     {
-        Console.WriteLine("Queue is empty");
-        return;
+        _items.Enqueue(value);
+        Console.WriteLine($"Queued {value}");
     }
 
-    // Strict ">" keeps the oldest item on ties (FIFO tiebreak).
-    var highestIndex = 0;
-    for (var i = 1; i < priorityItems.Count; i++)
+    public void Process()
     {
-        if (priorityItems[i].Priority > priorityItems[highestIndex].Priority)
+        if (_items.Count == 0)
         {
-            highestIndex = i;
+            Console.WriteLine("Queue is empty");
+            return;
         }
-    }
 
-    var item = priorityItems[highestIndex];
-    priorityItems.RemoveAt(highestIndex);
-    Console.WriteLine($"Processed {item.Value}");
+        Console.WriteLine($"Processed {_items.Dequeue()}");
+    }
 }
 
 #endregion
 
+#region Week 2 - VIP Queue
+class Week2VipQueue
+{
+    private readonly LinkedList<string> _items = new();
+
+    public void Enqueue(string value)
+    {
+        _items.AddLast(value);
+        Console.WriteLine($"Queued {value}");
+    }
+
+    public void EnqueueVip(string value)
+    {
+        _items.AddFirst(value);
+        Console.WriteLine($"VIP Queued {value}");
+    }
+
+    public void Process()
+    {
+        if (_items.Count == 0)
+        {
+            Console.WriteLine("Queue is empty");
+            return;
+        }
+
+        var value = _items.First!.Value;
+        _items.RemoveFirst();
+        Console.WriteLine($"Processed {value}");
+    }
+}
+
+#endregion
+
+#region Week 3 - Priority Queue
+
+class Week3PriorityQueue
+{
+    private readonly List<(string Value, int Priority)> _items = new();
+
+    public void Enqueue(string value, int priority)
+    {
+        _items.Add((value, priority));
+        Console.WriteLine($"Queued {value} with priority {priority}");
+    }
+
+    public void Process()
+    {
+        if (_items.Count == 0)
+        {
+            Console.WriteLine("Queue is empty");
+            return;
+        }
+
+        var highestIndex = 0;
+        for (var i = 1; i < _items.Count; i++)
+        {
+            if (_items[i].Priority > _items[highestIndex].Priority)
+            {
+                highestIndex = i;
+            }
+        }
+
+        var item = _items[highestIndex];
+        _items.RemoveAt(highestIndex);
+        Console.WriteLine($"Processed {item.Value}");
+    }
+}
+
+#endregion
+
+#region Week 4 - Keyword-Based Priority Queue
+
+class KeywordPriorityQueue
+{
+    private readonly Dictionary<string, int> _rules = new(StringComparer.OrdinalIgnoreCase);
+    private readonly List<(string Value, int Priority)> _items = new();
+
+    public void AddRule(string keyword, int priority)
+    {
+        _rules[keyword] = priority;
+    }
+
+    public void Enqueue(string value)
+    {
+        var priority = 0;
+        var matched = false;
+
+        foreach (var (keyword, rulePriority) in _rules)
+        {
+            if (!value.Contains(keyword, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (!matched || rulePriority > priority)
+            {
+                priority = rulePriority;
+                matched = true;
+            }
+        }
+
+        _items.Add((value, priority));
+        Console.WriteLine($"Queued {value} with priority {priority}");
+    }
+
+    public void Process()
+    {
+        if (_items.Count == 0)
+        {
+            Console.WriteLine("Queue is empty");
+            return;
+        }
+
+        var highestIndex = 0;
+        for (var i = 1; i < _items.Count; i++)
+        {
+            if (_items[i].Priority > _items[highestIndex].Priority)
+            {
+                highestIndex = i;
+            }
+        }
+
+        var item = _items[highestIndex];
+        _items.RemoveAt(highestIndex);
+        Console.WriteLine($"Processed {item.Value}");
+    }
+}
+
+#endregion
