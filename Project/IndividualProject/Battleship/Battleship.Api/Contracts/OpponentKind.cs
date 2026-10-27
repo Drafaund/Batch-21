@@ -1,6 +1,6 @@
 namespace Battleship.Api;
 
-internal enum OpponentKind
+public enum OpponentKind
 {
     Random,
     HuntTarget,

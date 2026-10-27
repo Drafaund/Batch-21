@@ -1,3 +1,3 @@
 namespace Battleship.Api;
 
-internal sealed record JoinGameRequest(string? PlayerName);
+public sealed record JoinGameRequest(string? PlayerName);

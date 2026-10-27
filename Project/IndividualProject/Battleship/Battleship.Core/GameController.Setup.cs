@@ -30,15 +30,18 @@ public partial class GameController
             return false;
         }
 
-        var ships = player.Fleet.Ships;
+        var ships = Fleet[player].Ships;
         if (ships.Count >= ShipTypeCount || ships.Any(placed => placed.Type == ship.Type))
         {
             return false;
         }
 
-        var board = player.Board;
-        return GetShipCoordinates(start, ship.Length, orientation)
-            .All(position => IsInside(board, position) && !board.Cells[position.X, position.Y].IsOccupied);
+        var board = Board[player];
+        var coordinates = GetShipCoordinates(start, ship.Length, orientation);
+        var isPlacementValid = coordinates.All(position =>
+            IsInside(board, position) && !board.Cells[position.X, position.Y].IsOccupied);
+
+        return isPlacementValid;
     }
 
     public bool PlaceShip(IPlayer player, IShip ship, Coordinate start, Orientation orientation)
@@ -51,14 +54,14 @@ public partial class GameController
         var positions = GetShipCoordinates(start, ship.Length, orientation).ToList();
         foreach (var position in positions)
         {
-            var cell = player.Board.Cells[position.X, position.Y];
+            var cell = Board[player].Cells[position.X, position.Y];
             cell.State = CellState.Ship;
             cell.OccupyingShip = ship;
         }
 
         ship.Positions = positions;
         ship.Orientation = orientation;
-        player.Fleet.Ships.Add(ship);
+        Fleet[player].Ships.Add(ship);
         return true;
     }
 
@@ -97,6 +100,9 @@ public partial class GameController
 
     private bool IsFleetComplete(IPlayer player)
     {
-        return player.Fleet.Ships.Select(ship => ship.Type).Distinct().Count() == ShipTypeCount;
+        var placedTypeCount = Fleet[player].Ships.Select(ship => ship.Type).Distinct().Count();
+        var isComplete = placedTypeCount == ShipTypeCount;
+
+        return isComplete;
     }
 }

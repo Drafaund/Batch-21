@@ -1,3 +1,3 @@
 namespace Battleship.Api;
 
-internal sealed record PlayerView(int Seat, string Name);
+public sealed record PlayerView(int Seat, string Name);

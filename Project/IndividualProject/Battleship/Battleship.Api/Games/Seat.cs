@@ -42,7 +42,11 @@ internal sealed class Seat
 
     public bool Authorizes(string? token)
     {
-        return token != null && _tokenBytes != null && CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(token), _tokenBytes);
+        var hasCredentials = token != null && _tokenBytes != null;
+        var isAuthorized = hasCredentials
+            && CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(token!), _tokenBytes!);
+
+        return isAuthorized;
     }
 
     public void StopDropTimer()

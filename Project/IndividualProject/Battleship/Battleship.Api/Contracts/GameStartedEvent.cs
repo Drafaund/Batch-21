@@ -1,3 +1,3 @@
 namespace Battleship.Api;
 
-internal sealed record GameStartedEvent(GameView View);
+public sealed record GameStartedEvent(GameView View);

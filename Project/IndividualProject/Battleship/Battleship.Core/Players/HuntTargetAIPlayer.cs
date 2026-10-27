@@ -76,8 +76,10 @@ public class HuntTargetAIPlayer : Player, IShotStrategy
 
     private bool IsInsideBoard(Coordinate position)
     {
-        return position.X >= 0 && position.X < Board.BoardSize
-            && position.Y >= 0 && position.Y < Board.BoardSize;
+        var isColumnInside = position.X >= 0 && position.X < Board.BoardSize;
+        var isRowInside = position.Y >= 0 && position.Y < Board.BoardSize;
+
+        return isColumnInside && isRowInside;
     }
 
     private List<Coordinate> GetUnfiredCells()

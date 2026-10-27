@@ -1,6 +1,6 @@
 namespace Battleship.Api;
 
-internal enum GamePhase
+public enum GamePhase
 {
     Lobby,
     Placing,

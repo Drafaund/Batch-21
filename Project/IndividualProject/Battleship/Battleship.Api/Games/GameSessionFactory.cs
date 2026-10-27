@@ -2,7 +2,7 @@ using Battleship.Core;
 
 namespace Battleship.Api;
 
-internal sealed class GameSessionFactory
+public sealed class GameSessionFactory
 {
     private readonly Func<Random> _randomFactory;
     private readonly ILoggerFactory _loggerFactory;

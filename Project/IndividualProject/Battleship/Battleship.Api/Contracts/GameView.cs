@@ -1,6 +1,6 @@
 namespace Battleship.Api;
 
-internal sealed record GameView(
+public sealed record GameView(
     string Code,
     int Version,
     GamePhase Phase,

@@ -1,3 +1,3 @@
 namespace Battleship.Api;
 
-internal sealed record OpponentView(string Name, bool Connected);
+public sealed record OpponentView(string Name, bool Connected);

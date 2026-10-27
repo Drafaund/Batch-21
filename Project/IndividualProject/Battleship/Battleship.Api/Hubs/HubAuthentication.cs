@@ -14,7 +14,13 @@ internal static class HubAuthentication
             {
                 var store = context.RequestServices.GetRequiredService<GameStore>();
                 var access = store.GetAuthorized(context.Request.Query["code"].ToString(), ReadToken(context.Request));
-                GameHub.RememberAccess(context, access);
+                if (access.IsFailure)
+                {
+                    await access.Error.ToProblem(context).ExecuteAsync(context);
+                    return;
+                }
+
+                GameHub.RememberAccess(context, access.Value);
                 await next();
             }));
     }

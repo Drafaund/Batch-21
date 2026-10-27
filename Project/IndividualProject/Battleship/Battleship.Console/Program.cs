@@ -59,5 +59,7 @@ Participant CreateBot(int id, AiKind kind)
 
 IReadOnlyList<IShip> CreateStandardShips()
 {
-    return Enum.GetValues<ShipType>().Select(type => (IShip)new Ship(type)).ToList();
+    var ships = Enum.GetValues<ShipType>().Select(type => (IShip)new Ship(type)).ToList();
+
+    return ships;
 }

@@ -2,7 +2,7 @@ using Battleship.Core;
 
 namespace Battleship.Api;
 
-internal sealed class GameSession
+public sealed class GameSession
 {
     private readonly object _sync = new();
     private readonly GameController _controller;
@@ -19,7 +19,7 @@ internal sealed class GameSession
     private DateTime? _turnDeadline;
     private int _version = 1;
 
-    public GameSession(
+    internal GameSession(
         string code,
         GameController controller,
         Seat seat1,
@@ -49,12 +49,16 @@ internal sealed class GameSession
 
     public static List<IShip> CreateStandardShips()
     {
-        return Enum.GetValues<ShipType>().Select(type => (IShip)new Ship(type)).ToList();
+        var ships = Enum.GetValues<ShipType>().Select(type => (IShip)new Ship(type)).ToList();
+
+        return ships;
     }
 
     public int? FindSeat(string? token)
     {
-        return _seats.FirstOrDefault(seat => seat.Authorizes(token))?.Number;
+        var seatNumber = _seats.FirstOrDefault(seat => seat.Authorizes(token))?.Number;
+
+        return seatNumber;
     }
 
     public GameView GetView(int seat)
@@ -65,14 +69,14 @@ internal sealed class GameSession
         }
     }
 
-    public JoinGameResponse Join(string playerName, string token)
+    public Result<JoinGameResponse> Join(string playerName, string token)
     {
-        return Execute(events =>
+        return Execute<Result<JoinGameResponse>>(events =>
         {
             var guest = _seats[1];
             if (!IsOnline || guest.IsTaken)
             {
-                throw ApiException.Conflict("This room is already full.");
+                return Error.Conflict("This room is already full.");
             }
 
             guest.Take(playerName, token);
@@ -83,20 +87,24 @@ internal sealed class GameSession
         });
     }
 
-    public GameView PlaceShip(int seat, ShipType type, Coordinate start, Orientation orientation)
+    public Result<GameView> PlaceShip(int seat, ShipType type, Coordinate start, Orientation orientation)
     {
-        return Execute(events =>
+        return Execute<Result<GameView>>(events =>
         {
-            EnsurePlacing();
+            if (CheckPlacing() is { } notPlacing)
+            {
+                return notPlacing;
+            }
+
             var player = _seats[seat - 1].Player;
             if (_controller.GetFleet(player).Ships.Any(placed => placed.Type == type))
             {
-                throw ApiException.Conflict($"The {type} is already placed.");
+                return Error.Conflict($"The {type} is already placed.");
             }
 
             if (!_controller.PlaceShip(player, new Ship(type), start, orientation))
             {
-                throw ApiException.Conflict("The ship does not fit there (outside the board or overlapping another ship).");
+                return Error.Conflict("The ship does not fit there (outside the board or overlapping another ship).");
             }
 
             StartWhenFleetsAreComplete(events);
@@ -105,15 +113,19 @@ internal sealed class GameSession
         });
     }
 
-    public GameView PlaceShipsRandomly(int seat)
+    public Result<GameView> PlaceShipsRandomly(int seat)
     {
-        return Execute(events =>
+        return Execute<Result<GameView>>(events =>
         {
-            EnsurePlacing();
+            if (CheckPlacing() is { } notPlacing)
+            {
+                return notPlacing;
+            }
+
             var player = _seats[seat - 1].Player;
             if (_controller.GetFleet(player).Ships.Count > 0)
             {
-                throw ApiException.Conflict("Random placement is only possible before the first ship is placed.");
+                return Error.Conflict("Random placement is only possible before the first ship is placed.");
             }
 
             _controller.PlaceShipsRandomly(player, CreateStandardShips(), _random);
@@ -123,15 +135,19 @@ internal sealed class GameSession
         });
     }
 
-    public ShotResponse Fire(int seat, Coordinate target)
+    public Result<ShotResponse> Fire(int seat, Coordinate target)
     {
-        return Execute(events =>
+        return Execute<Result<ShotResponse>>(events =>
         {
-            EnsureInProgress();
+            if (CheckInProgress() is { } notInProgress)
+            {
+                return notInProgress;
+            }
+
             var shooter = _seats[seat - 1];
             if (!ReferenceEquals(_controller.GetCurrentPlayer(), shooter.Player))
             {
-                throw ApiException.Conflict("It is not your turn.");
+                return Error.Conflict("It is not your turn.");
             }
 
             var firstNewShot = _shots.Count;
@@ -153,15 +169,15 @@ internal sealed class GameSession
         });
     }
 
-    public void SendEmote(int seat, string emote)
+    public Result SendEmote(int seat, string emote)
     {
-        Execute(events =>
+        return Execute<Result>(events =>
         {
             var sender = _seats[seat - 1];
             var receiver = OtherSeat(sender);
             if (!IsOnline || !receiver.IsTaken)
             {
-                throw ApiException.Conflict(IsOnline
+                return Error.Conflict(IsOnline
                     ? "Wait for the other player to join before sending emotes."
                     : "Emotes are only for games between two players.");
             }
@@ -169,11 +185,12 @@ internal sealed class GameSession
             var now = DateTime.UtcNow;
             if (sender.LastEmoteAt is { } last && now - last < _options.EmoteCooldown)
             {
-                throw ApiException.TooManyRequests("You are sending emotes too fast. Wait a moment.");
+                return Error.TooManyRequests("You are sending emotes too fast. Wait a moment.");
             }
 
             sender.LastEmoteAt = now;
             events.Add(new SeatEvent(receiver.Number, GameEventNames.EmoteReceived, new EmoteReceivedEvent(emote)));
+            return Result.Success();
         });
     }
 
@@ -394,30 +411,32 @@ internal sealed class GameSession
         });
     }
 
-    private void EnsurePlacing()
+    // Each check returns the reason the action is not allowed right now, or null when it is.
+    private Error? CheckPlacing()
     {
         if (_controller.GetState() != GameState.Setup)
         {
-            throw ApiException.Conflict("Ships can only be placed before the game starts.");
+            return Error.Conflict("Ships can only be placed before the game starts.");
         }
 
         if (Phase == GamePhase.Lobby)
         {
-            throw ApiException.Conflict("Wait for the other player to join before placing ships.");
+            return Error.Conflict("Wait for the other player to join before placing ships.");
         }
+
+        return null;
     }
 
-    private void EnsureInProgress()
+    private Error? CheckInProgress()
     {
-        switch (_controller.GetState())
+        return _controller.GetState() switch
         {
-            case GameState.Setup:
-                throw ApiException.Conflict(Phase == GamePhase.Lobby
-                    ? "Wait for the other player to join first."
-                    : "Place all your ships before firing.");
-            case GameState.Finished:
-                throw ApiException.Conflict("The game is over.");
-        }
+            GameState.Setup => Error.Conflict(Phase == GamePhase.Lobby
+                ? "Wait for the other player to join first."
+                : "Place all your ships before firing."),
+            GameState.Finished => Error.Conflict("The game is over."),
+            _ => null,
+        };
     }
 
     private void HandleShotResolved(IPlayer shooter, Coordinate target, ShotResult result)

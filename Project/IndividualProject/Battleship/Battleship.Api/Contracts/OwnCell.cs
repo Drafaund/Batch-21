@@ -1,6 +1,6 @@
 namespace Battleship.Api;
 
-internal enum OwnCell
+public enum OwnCell
 {
     Water,
     Ship,

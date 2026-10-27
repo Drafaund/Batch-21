@@ -93,7 +93,7 @@ Battleship/
 │   ├── Contracts/           request, response, and event types (the enemy board type cannot describe a ship)
 │   ├── Games/               GameSession, GameStore, OnlinePlayer, Seat, ViewMapper, EmoteCatalog, error handling
 │   ├── Hubs/                the SignalR hub, hub authentication, and the sink that sends events to players
-│   └── Endpoints/           the REST endpoints
+│   └── Controllers/         GamesController (REST) and the Result-to-HTTP mapping
 ├── Battleship.Tests/        xUnit tests for Battleship.Core
 ├── Battleship.Api.Tests/    integration tests for the API (WebApplicationFactory, SignalR clients)
 └── battleship-web/          React front end (Vite, TypeScript), with Vitest and Playwright tests

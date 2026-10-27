@@ -5,7 +5,9 @@ public partial class GameController
 {
     public int GetRemainingShips(IPlayer player)
     {
-        return GetFleet(player).Ships.Count(ship => !ship.IsSunk);
+        var remainingShips = GetFleet(player).Ships.Count(ship => !ship.IsSunk);
+
+        return remainingShips;
     }
 
     public IPlayer? CheckWinner()
@@ -29,6 +31,9 @@ public partial class GameController
 
     private bool IsDefeated(IPlayer player)
     {
-        return player.Fleet.Ships.Count > 0 && GetRemainingShips(player) == 0;
+        var hasPlacedShips = Fleet[player].Ships.Count > 0;
+        var isDefeated = hasPlacedShips && GetRemainingShips(player) == 0;
+
+        return isDefeated;
     }
 }

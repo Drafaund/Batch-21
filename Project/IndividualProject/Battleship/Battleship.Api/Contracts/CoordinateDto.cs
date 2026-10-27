@@ -2,7 +2,7 @@ using Battleship.Core;
 
 namespace Battleship.Api;
 
-internal sealed record CoordinateDto(int X, int Y)
+public sealed record CoordinateDto(int X, int Y)
 {
     public static CoordinateDto From(Coordinate coordinate) => new(coordinate.X, coordinate.Y);
 

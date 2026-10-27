@@ -71,6 +71,19 @@ public class GameControllerBasicsTests
     }
 
     [Fact]
+    public void BoardAndFleetDictionaries_AfterConstruction_HoldEachPlayersBoardAndFleet()
+    {
+        var game = new TestGame();
+
+        Assert.Equal(2, game.Controller.Board.Count);
+        Assert.Equal(2, game.Controller.Fleet.Count);
+        Assert.Same(game.Player1.Board, game.Controller.Board[game.Player1]);
+        Assert.Same(game.Player2.Board, game.Controller.Board[game.Player2]);
+        Assert.Same(game.Player1.Fleet, game.Controller.Fleet[game.Player1]);
+        Assert.Same(game.Player2.Fleet, game.Controller.Fleet[game.Player2]);
+    }
+
+    [Fact]
     public void GetBoardAndGetFleet_PlayerNotInGame_Throw()
     {
         var game = new TestGame();

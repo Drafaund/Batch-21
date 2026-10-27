@@ -43,7 +43,7 @@ public partial class GameController
         EnsureParticipant(shooter);
         EnsureInProgress();
 
-        var result = ResolveShot(GetOpponent(shooter).Board, target);
+        var result = ResolveShot(Board[GetOpponent(shooter)], target);
         OnShotResolved?.Invoke(shooter, target, result);
         return result;
     }

@@ -1,6 +1,6 @@
 namespace Battleship.Api;
 
-internal sealed class GameOptions
+public sealed class GameOptions
 {
     public TimeSpan OpponentTimeout { get; set; } = TimeSpan.FromSeconds(30);
 

@@ -9,11 +9,11 @@ using Serilog.Events;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.ConfigureHttpJsonOptions(options =>
-    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter(allowIntegerValues: false)));
-
-// Always raise an exception for unreadable requests, so ApiExceptionMiddleware gives them the same problem details as other errors.
-builder.Services.Configure<RouteHandlerOptions>(options => options.ThrowOnBadRequest = true);
+builder.Services
+    .AddControllers()
+    .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(allowIntegerValues: false)))
+    // An unreadable request body gets the same problem details, and the same log line, as the errors a Result carries.
+    .ConfigureApiBehaviorOptions(options => options.InvalidModelStateResponseFactory = InvalidRequestResponse.Create);
 builder.Services.AddProblemDetails();
 
 builder.Services.AddEndpointsApiExplorer();
@@ -41,9 +41,8 @@ var app = builder.Build();
 
 app.UseExceptionHandler();
 
-// Answers 404, 405, and 415 from the framework with the same problem details as the errors raised by the API.
+// Answers 404, 405, and 415 from the framework with the same problem details as the errors a Result carries.
 app.UseStatusCodePages();
-app.UseMiddleware<ApiExceptionMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {
@@ -53,7 +52,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHubAuthentication();
 
-app.MapGameEndpoints();
+app.MapControllers();
 app.MapHub<GameHub>(GameHub.Path);
 
 app.Run();

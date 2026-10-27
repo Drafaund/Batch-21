@@ -1,3 +1,3 @@
 namespace Battleship.Api;
 
-internal sealed record EmoteRequest(string? Emote);
+public sealed record EmoteRequest(string? Emote);

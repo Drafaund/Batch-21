@@ -1,6 +1,6 @@
 namespace Battleship.Api;
 
-internal enum EnemyCell
+public enum EnemyCell
 {
     Unknown,
     Hit,

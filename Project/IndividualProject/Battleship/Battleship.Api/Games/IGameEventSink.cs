@@ -1,6 +1,6 @@
 namespace Battleship.Api;
 
-internal interface IGameEventSink
+public interface IGameEventSink
 {
     void Publish(string code, IReadOnlyList<SeatEvent> events);
 }

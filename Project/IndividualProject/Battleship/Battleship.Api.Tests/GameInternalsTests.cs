@@ -104,8 +104,77 @@ public class GameInternalsTests
 
         var session = store.Create("Ann", OpponentKind.Random);
 
-        Assert.Same(session, store.Find(session.Code.ToLowerInvariant()));
+        Assert.Same(session, store.Find(session.Code.ToLowerInvariant()).Value);
         Assert.Equal(1, store.Count);
+    }
+
+    [Fact]
+    public void GameStore_Find_UnknownCode_FailsWithNotFound()
+    {
+        var store = new GameStore(NewFactory());
+
+        var result = store.Find("ZZZZZ");
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(ErrorType.NotFound, result.Error.Type);
+    }
+
+    [Fact]
+    public void GameStore_GetAuthorized_WrongToken_FailsWithUnauthorized()
+    {
+        var store = new GameStore(NewFactory());
+        var session = store.Create("Ann", OpponentKind.Random);
+
+        var result = store.GetAuthorized(session.Code, "wrong");
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(ErrorType.Unauthorized, result.Error.Type);
+    }
+
+    [Fact]
+    public void GameStore_GetAuthorized_RightToken_ReturnsTheSessionAndSeat()
+    {
+        var store = new GameStore(NewFactory());
+        var session = store.Create("Ann", OpponentKind.Random);
+
+        var result = store.GetAuthorized(session.Code, session.PlayerToken);
+
+        Assert.True(result.IsSuccess);
+        Assert.Same(session, result.Value.Session);
+        Assert.Equal(1, result.Value.Seat);
+    }
+
+    [Fact]
+    public void GameSession_Fire_BeforeShipsArePlaced_FailsWithConflict()
+    {
+        var session = NewFactory().Create("ABCDE", "secret", "Ann", OpponentKind.Random);
+
+        var result = session.Fire(1, new Coordinate(0, 0));
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(ErrorType.Conflict, result.Error.Type);
+    }
+
+    [Fact]
+    public void GameSession_Join_BotGame_FailsWithConflict()
+    {
+        var session = NewFactory().Create("ABCDE", "secret", "Ann", OpponentKind.Random);
+
+        var result = session.Join("Bob", "other");
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(ErrorType.Conflict, result.Error.Type);
+    }
+
+    [Fact]
+    public void GameSession_SendEmote_BotGame_FailsWithConflict()
+    {
+        var session = NewFactory().Create("ABCDE", "secret", "Ann", OpponentKind.Random);
+
+        var result = session.SendEmote(1, "gg");
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(ErrorType.Conflict, result.Error.Type);
     }
 
     [Fact]
@@ -125,14 +194,19 @@ public class GameInternalsTests
     [InlineData("a")]
     public void PlayerNameValidator_GoodNames_AreTrimmedAndAccepted(string name)
     {
-        Assert.Equal(name.Trim(), PlayerNameValidator.Validate(name));
+        Assert.Equal(name.Trim(), PlayerNameValidator.Validate(name).Value);
     }
 
-    [Fact]
-    public void PlayerNameValidator_Null_ThrowsBadRequest()
+    [Theory]
+    [InlineData(null)]
+    [InlineData("   ")]
+    [InlineData("a name that is far too long")]
+    [InlineData("bad\nname")]
+    public void PlayerNameValidator_BadNames_FailWithValidation(string? name)
     {
-        var exception = Assert.Throws<ApiException>(() => PlayerNameValidator.Validate(null));
+        var result = PlayerNameValidator.Validate(name);
 
-        Assert.Equal(400, exception.StatusCode);
+        Assert.True(result.IsFailure);
+        Assert.Equal(ErrorType.Validation, result.Error.Type);
     }
 }

@@ -25,11 +25,26 @@ public partial class GameController
         _currentPlayer = player1;
         _turnNumber = 1;
         State = GameState.Setup;
+
+        Board = new Dictionary<IPlayer, IBoard>
+        {
+            [player1] = player1.Board,
+            [player2] = player2.Board,
+        };
+        Fleet = new Dictionary<IPlayer, IFleet>
+        {
+            [player1] = player1.Fleet,
+            [player2] = player2.Fleet,
+        };
     }
 
     public IPlayer Player1 { get; }
 
     public IPlayer Player2 { get; }
+
+    public Dictionary<IPlayer, IBoard> Board { get; }
+
+    public Dictionary<IPlayer, IFleet> Fleet { get; }
 
     public GameState State { get; private set; }
 
@@ -44,21 +59,23 @@ public partial class GameController
     public IBoard GetBoard(IPlayer player)
     {
         EnsureParticipant(player);
-        return player.Board;
+        return Board[player];
     }
 
     public IFleet GetFleet(IPlayer player)
     {
         EnsureParticipant(player);
-        return player.Fleet;
+        return Fleet[player];
     }
 
     private static int ShipTypeCount => Enum.GetValues<ShipType>().Length;
 
     private static bool IsInside(IBoard board, Coordinate position)
     {
-        return position.X >= 0 && position.X < board.BoardSize
-            && position.Y >= 0 && position.Y < board.BoardSize;
+        var isColumnInside = position.X >= 0 && position.X < board.BoardSize;
+        var isRowInside = position.Y >= 0 && position.Y < board.BoardSize;
+
+        return isColumnInside && isRowInside;
     }
 
     private IPlayer GetOpponent(IPlayer player)
