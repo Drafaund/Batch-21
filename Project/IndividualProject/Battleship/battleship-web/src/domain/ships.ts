@@ -8,7 +8,6 @@ export const SHIP_LENGTHS: Record<ShipType, number> = {
   Destroyer: 2,
 }
 
-/** The cells a ship would cover. Horizontal extends to the right and vertical downward, like the server. */
 export function shipCells(start: Coordinate, length: number, orientation: Orientation): Coordinate[] {
   return Array.from({ length }, (_, offset) =>
     orientation === 'Horizontal' ? { x: start.x + offset, y: start.y } : { x: start.x, y: start.y + offset },
@@ -16,9 +15,7 @@ export function shipCells(start: Coordinate, length: number, orientation: Orient
 }
 
 export interface PlacementPreview {
-  /** The cells of the ship that lie on the board. */
   cells: Coordinate[]
-  /** True when the whole ship is on the board and only on water. The server still has the last word. */
   valid: boolean
 }
 

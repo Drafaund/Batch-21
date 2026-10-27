@@ -52,7 +52,6 @@ public class FullGameTests : IClassFixture<ApiFactory>
         if (view.Winner == "you")
         {
             Assert.Equal(0, view.EnemyShipsRemaining);
-            // Every enemy ship has sunk, so all 17 hit cells show as Sunk.
             Assert.Equal(17, view.EnemyBoard.Cells.Sum(row => row.Count(c => c == EnemyCell.Sunk)));
             Assert.Equal(0, view.EnemyBoard.Cells.Sum(row => row.Count(c => c == EnemyCell.Hit)));
             Assert.Contains(view.OwnShips, ship => !ship.IsSunk);

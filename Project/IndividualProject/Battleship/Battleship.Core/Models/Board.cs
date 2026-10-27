@@ -2,7 +2,7 @@ namespace Battleship.Core;
 
 public class Board : IBoard
 {
-    public Board() //Otomatis berjlaan ketika objek dibuat
+    public Board()
     {
         BoardSize = 10;
         Cells = new ICell[BoardSize, BoardSize];
@@ -15,7 +15,6 @@ public class Board : IBoard
         }
     }
 
-    // Hanya bisa di set diconstructor dan gak bisa diubah setelahnya
     public int BoardSize { get; } 
 
     public ICell[,] Cells { get; set; }

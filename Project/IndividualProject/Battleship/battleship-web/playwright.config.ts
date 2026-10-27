@@ -1,8 +1,5 @@
 import { defineConfig, devices } from '@playwright/test'
 
-// The end-to-end tests drive a real browser against the real API.
-// Both servers are started here unless they are already running (reuseExistingServer).
-// E2E_API_URL, E2E_API_COMMAND, and E2E_WEB_PORT move the servers to other ports or to another build of the API.
 const apiUrl = process.env.E2E_API_URL ?? 'http://localhost:5080'
 const webPort = process.env.E2E_WEB_PORT ?? '5173'
 const apiCommand = process.env.E2E_API_COMMAND ?? `dotnet run --project ../Battleship.Api --no-launch-profile --urls ${apiUrl}`

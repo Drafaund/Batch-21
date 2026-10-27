@@ -283,7 +283,6 @@ public class OnlineGameTests : IClassFixture<ApiFactory>
                 annShots++;
                 if (last.View.Phase != GamePhase.Finished)
                 {
-                    // Bob fires at the far corner away from the carrier rows, so he always has a fresh cell.
                     var bobShot = await bob.FireOkAsync(9 - (annShots - 1) % 10, 9 - (annShots - 1) / 10);
                     Assert.NotEqual(ShotResult.Invalid, bobShot.Result);
                 }

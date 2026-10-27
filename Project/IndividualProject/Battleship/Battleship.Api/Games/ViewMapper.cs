@@ -31,7 +31,6 @@ internal static class ViewMapper
             BuildOwnBoard(controller.GetBoard(viewer.Player)),
             ownFleet.Ships.Select(ToShipView).ToList(),
             BuildEnemyBoard(controller.GetBoard(opponent.Player)),
-            // Before the battle the other fleet may be incomplete, so the count would reveal how far they got.
             started ? controller.GetRemainingShips(opponent.Player) : Enum.GetValues<ShipType>().Length,
             endReason,
             turnSecondsRemaining);
@@ -73,8 +72,6 @@ internal static class ViewMapper
             rows[y] = new EnemyCell[board.BoardSize];
             for (var x = 0; x < board.BoardSize; x++)
             {
-                // A cell that holds a ship but was not hit yet is reported as Unknown, like water.
-                // A hit cell of a ship that has sunk is Sunk: every cell of that ship is already hit, so nothing is revealed.
                 var cell = board.Cells[x, y];
                 rows[y][x] = cell.State switch
                 {

@@ -5,7 +5,6 @@ interface LobbyScreenProps {
   onLeave: () => void
 }
 
-/** Shown to the player who opened a room, until a friend joins with the code. */
 export function LobbyScreen({ view, onLeave }: LobbyScreenProps) {
   return (
     <section className="panel lobby-screen">

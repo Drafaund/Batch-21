@@ -1,6 +1,5 @@
 namespace Battleship.Core;
 
-// Turn stage: asking for a target, resolving the shot, and passing the turn.
 public partial class GameController
 {
     public ShotResult TakeTurn()

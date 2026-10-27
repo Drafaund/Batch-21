@@ -116,7 +116,6 @@ button.primary {
   font-weight: 600;
 }
 
-/* Start screen */
 .start-screen {
   max-width: 28rem;
   margin: 2rem auto;
@@ -147,7 +146,6 @@ fieldset {
   padding: 0.2rem 0;
 }
 
-/* Boards */
 .board-panel {
   background: var(--panel);
   border: 1px solid var(--border);
@@ -179,22 +177,17 @@ fieldset {
   padding: 0;
   display: grid;
   place-items: center;
-  /* Square corners: the sea is masked to square cells, so a rounded cell would let water show at its corners. */
   border-radius: 0;
   border: 1px solid transparent;
   font-weight: 700;
   line-height: 1;
 }
 
-/* Sea: water cells are transparent, so the moving sea layer behind the board shows through.
-   The sea is one element that never re-renders, so clicking a cell cannot restart its animation. */
 .sea {
   position: absolute;
   grid-column: 2 / -1;
   grid-row: 2 / -1;
   inset: 0;
-  /* The sea fills the whole grid, but this mask keeps it only inside the cells. The 2px gaps between
-     cells are cut out, so the board panel shows there. Each tile is one cell plus one gap. */
   --tile: calc(var(--cell-size) + 2px);
   mask-image:
     linear-gradient(to right, #000 var(--cell-size), transparent var(--cell-size)),
@@ -213,7 +206,6 @@ fieldset {
   -webkit-mask-repeat: repeat-x, repeat-y;
   -webkit-mask-composite: source-in;
   background-color: var(--water);
-  /* Two bands per tile: the colour at 0%, 50% and 100% matches, so tiles join without a seam. */
   background-image:
     linear-gradient(
       135deg,
@@ -241,7 +233,6 @@ fieldset {
 .cell.unknown,
 .cell.miss {
   background: transparent;
-  /* A light line with a dark one just inside it: the border stays visible on both the light and the dark bands of the sea. */
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.6),
     inset 0 0 0 2px rgba(0, 25, 60, 0.3);
@@ -253,8 +244,6 @@ fieldset {
   color: var(--ship-text);
 }
 
-/* Fire: a dark ember bed that glows, with two flames that flicker. The flames are squares with one sharp
-   corner, turned 45 degrees so the sharp corner points up. */
 .cell.hit {
   overflow: hidden;
   border-color: rgba(255, 190, 110, 0.55);
@@ -287,7 +276,6 @@ fieldset {
   animation: flame-flicker-inner 0.55s ease-in-out -0.2s infinite alternate;
 }
 
-/* Sunk: a charred cell with a skull. The skull is skull.svg used as a mask, so --skull sets its colour. */
 .cell.sunk {
   background: radial-gradient(circle at 50% 40%, #4a2e29 0%, #1a0d0b 100%);
   box-shadow:
@@ -305,7 +293,6 @@ fieldset {
   mask: url('/skull.svg') center / contain no-repeat;
 }
 
-/* Splash: the water stays, and a ring spreads out from the dot. */
 .cell.miss {
   color: var(--miss);
   font-size: 1.4em;
@@ -348,7 +335,6 @@ button.cell.unknown:focus-visible {
   z-index: 1;
 }
 
-/* Each layer moves by exactly one tile, so the loop has no visible jump. */
 @keyframes sea-swell {
   from {
     background-position:
@@ -401,8 +387,6 @@ button.cell.unknown:focus-visible {
   }
 }
 
-/* Reduced motion keeps the sea flowing, only slower. The fire pulse, the flickering flames, and the
-   splash ring, which flash or expand, stay off. The flames are drawn still. */
 @media (prefers-reduced-motion: reduce) {
   .board .cell.hit,
   .board .cell.hit::before,
@@ -421,7 +405,6 @@ button.cell.unknown:focus-visible {
   }
 }
 
-/* Placement */
 .placement-screen {
   display: grid;
   gap: 1rem;
@@ -455,7 +438,6 @@ button.cell.unknown:focus-visible {
   margin: 0.4rem 0 0;
 }
 
-/* Battle */
 .battle-screen {
   display: grid;
   gap: 1rem;
@@ -549,7 +531,6 @@ button.cell.unknown:focus-visible {
   }
 }
 
-/* Online rooms */
 .lobby-screen {
   max-width: 28rem;
   margin: 2rem auto;
@@ -577,7 +558,6 @@ button.cell.unknown:focus-visible {
   margin: 0 0 0.6rem;
 }
 
-/* Turn clock */
 .countdown {
   margin-left: 0.4rem;
   font-variant-numeric: tabular-nums;
@@ -588,7 +568,6 @@ button.cell.unknown:focus-visible {
   color: var(--bad);
 }
 
-/* Emotes */
 .emote-panel {
   display: flex;
   flex-wrap: wrap;
@@ -616,7 +595,6 @@ button.cell.unknown:focus-visible {
   color: var(--muted);
 }
 
-/* Reserves the height, so the boards do not jump when a bubble appears. */
 .emote-stage {
   flex-basis: 100%;
   min-height: 2.6rem;

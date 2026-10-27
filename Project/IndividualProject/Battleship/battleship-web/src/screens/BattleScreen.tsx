@@ -15,11 +15,9 @@ interface BattleScreenProps {
   lastBotShots: Coordinate[]
   onFire: (target: Coordinate) => void
   onPlayAgain: () => void
-  /** Only given in a room with another human; against a bot there is nobody to send an emote to. */
   emotes?: { incoming: IncomingEmote | null; onSend: (emote: EmoteCode) => void }
 }
 
-/** What the banner says when the game is over. */
 function describeEnd(view: GameView, opponentName: string): string {
   const won = view.winner === 'you'
   switch (view.endReason) {
@@ -37,9 +35,7 @@ export function BattleScreen({ view, busy, log, lastPlayerShot, lastBotShots, on
   const canFire = view.phase === 'InProgress' && view.yourTurn && !busy
   const opponentName = view.opponent?.name ?? 'The bot'
   const opponentAway = !finished && view.opponent !== null && !view.opponent.connected
-  // Counts down from the seconds the server reported with this view; only a battle between two humans has a clock.
   const secondsLeft = useCountdown(finished ? null : view.turnSecondsRemaining, view.version)
-  // The own board says only "hit"; which hit cells belong to a sunk ship is known from the ships.
   const sunkCells = view.ownShips.filter((ship) => ship.isSunk).flatMap((ship) => ship.positions)
 
   return (

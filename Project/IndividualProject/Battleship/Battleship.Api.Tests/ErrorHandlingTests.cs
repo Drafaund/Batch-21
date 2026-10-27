@@ -18,10 +18,10 @@ public class ErrorHandlingTests : IClassFixture<ApiFactory>
     {
         var game = await GameClient.CreateAsync(_http);
 
-        await game.GetAsync(token: null);                       // 401
-        await game.FireAsync(0, 0);                              // 409
-        await GameClient.SendAsync(_http, HttpMethod.Get, "/api/games/ZZZZZ", "x", null);   // 404
-        await GameClient.SendAsync(_http, HttpMethod.Post, "/api/games", null, new { });     // 400
+        await game.GetAsync(token: null);
+        await game.FireAsync(0, 0);
+        await GameClient.SendAsync(_http, HttpMethod.Get, "/api/games/ZZZZZ", "x", null);
+        await GameClient.SendAsync(_http, HttpMethod.Post, "/api/games", null, new { });
 
         var rejected = _factory.Logs.Entries.Where(e => e.Message.Contains("rejected with")).ToList();
         Assert.True(rejected.Count >= 4);

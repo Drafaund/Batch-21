@@ -9,7 +9,6 @@ interface Player {
 }
 
 async function newPlayer(browser: Browser, name: string): Promise<Player> {
-  // Own context: own local storage and own connection, like a second person on a second computer.
   const context = await browser.newContext()
   return { context, page: await context.newPage(), name }
 }
@@ -19,7 +18,6 @@ async function fillName(page: Page, name: string) {
   await page.getByLabel('Your name').fill(name)
 }
 
-/** Opens a room and returns its code. */
 async function createRoom(player: Player): Promise<string> {
   await fillName(player.page, player.name)
   await player.page.getByRole('button', { name: 'Create a room' }).click()
@@ -35,14 +33,12 @@ async function joinRoom(player: Player, code: string) {
   await player.page.getByRole('button', { name: 'Join room' }).click()
 }
 
-/** Both players in a room with their ships placed at random, so the battle has started. */
 async function startBattle(browser: Browser) {
   const ann = await newPlayer(browser, 'Ann')
   const bob = await newPlayer(browser, 'Bob')
   const code = await createRoom(ann)
   await joinRoom(bob, code)
 
-  // The lobby of Ann is replaced by ship placement without her doing anything: the event came over SignalR.
   await expect(ann.page.getByRole('heading', { name: 'Place your ships' })).toBeVisible()
   await expect(bob.page.getByRole('heading', { name: 'Place your ships' })).toBeVisible()
 
@@ -50,20 +46,17 @@ async function startBattle(browser: Browser) {
   await expect(ann.page.getByText(/Waiting for Bob to place theirs/)).toBeVisible()
   await bob.page.getByRole('button', { name: 'Place randomly' }).click()
 
-  // Ann fires first; Bob waits.
   await expect(ann.page.getByText(/Your turn/)).toBeVisible()
   await expect(bob.page.getByText('Waiting for Ann…')).toBeVisible()
   return { ann, bob, code }
 }
 
-/** Fires at the cells row by row, whenever it is this player's turn, until the game is over. */
 async function fireUntilFinished(page: Page) {
   const playAgain = page.getByRole('button', { name: 'Play again' })
 
   for (let y = 0; y < 10; y++) {
     for (let x = 0; x < 10; x++) {
       const cell = page.getByRole('button', { name: `Target board ${ROWS[y]}-${x + 1}: not fired at yet` })
-      // Either the turn comes round to this player or the game ended.
       await expect(playAgain.or(cell)).toBeVisible({ timeout: 30_000 })
       if (await playAgain.isVisible()) {
         return
@@ -81,7 +74,6 @@ test.describe('two players online', () => {
 
     await Promise.all([fireUntilFinished(ann.page), fireUntilFinished(bob.page)])
 
-    // Exactly one of them won and the other one lost.
     const verdicts = await Promise.all(
       [ann, bob].map((player) => player.page.getByRole('status').filter({ hasText: /You win!|wins\./ }).textContent()),
     )
@@ -89,7 +81,6 @@ test.describe('two players online', () => {
     expect(verdicts.filter((text) => text?.includes('wins.'))).toHaveLength(1)
     await expect(ann.page.getByRole('button', { name: 'Play again' })).toBeVisible()
     await expect(bob.page.getByRole('button', { name: 'Play again' })).toBeVisible()
-    // Neither browser was ever told where the other fleet lies.
     await expect(ann.page.getByRole('img', { name: /Target board .*ship/i })).toHaveCount(0)
     await expect(bob.page.getByRole('img', { name: /Target board .*ship/i })).toHaveCount(0)
 

@@ -6,7 +6,6 @@ namespace Battleship.Api;
 
 public sealed class GameStore
 {
-    // No 0, O, 1, I, or L, so a code is easy to read out loud.
     private const string CodeAlphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
     private const int CodeLength = 5;
     private const int TokenBytes = 16;

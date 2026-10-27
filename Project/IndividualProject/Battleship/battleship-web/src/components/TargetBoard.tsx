@@ -5,19 +5,16 @@ import { Board, type CellSpec } from './Board'
 interface TargetBoardProps {
   board: EnemyBoardView
   lastShot?: Coordinate | null
-  /** When given, cells not fired at yet can be clicked. */
   onFire?: (target: Coordinate) => void
 }
 
 const LOOK: Record<EnemyCell, { symbol: string; className: string; text: string }> = {
   Unknown: { symbol: '', className: 'unknown', text: 'not fired at yet' },
-  // Hit and Sunk are drawn by CSS (flames and a skull), so they have no text symbol.
   Hit: { symbol: '', className: 'hit', text: 'hit' },
   Miss: { symbol: '•', className: 'miss', text: 'miss' },
   Sunk: { symbol: '', className: 'sunk', text: 'sunk' },
 }
 
-/** The enemy board: only the results of the player's own shots, never the enemy ships. */
 export function TargetBoard({ board, lastShot, onFire }: TargetBoardProps) {
   const rows: CellSpec[][] = board.cells.map((row, y) =>
     row.map((value, x) => {

@@ -64,7 +64,6 @@ internal sealed class HubClient : IAsyncDisposable
                 options.AccessTokenProvider = () => Task.FromResult(token);
                 options.Transports = HttpTransportType.WebSockets;
                 options.HttpMessageHandlerFactory = _ => server.CreateHandler();
-                // A browser cannot set headers on a WebSocket, so the token travels in the query string. This test does the same.
                 options.WebSocketFactory = async (context, cancellationToken) =>
                 {
                     var uri = token == null ? context.Uri : new Uri($"{context.Uri}&access_token={Uri.EscapeDataString(token)}");

@@ -25,7 +25,6 @@ public class ConsoleCoordinateInput : ICoordinateInput
 
         var answer = _screen.Prompt(prompt);
 
-        // The validator above only lets a parsable answer through.
         CoordinateFormat.TryParse(answer, _boardSize, out var coordinate);
         return coordinate!.Value;
     }

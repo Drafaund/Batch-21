@@ -20,7 +20,7 @@ public class GameControllerShotTests
     {
         var game = new TestGame().Started();
 
-        var result = game.Controller.ProcessShot(game.Player1, new Coordinate(0, 0)); // Carrier, length 5
+        var result = game.Controller.ProcessShot(game.Player1, new Coordinate(0, 0));
 
         var carrier = game.Player2.Fleet.Ships.Single(s => s.Type == ShipType.Carrier);
         Assert.Equal(ShotResult.Hit, result);

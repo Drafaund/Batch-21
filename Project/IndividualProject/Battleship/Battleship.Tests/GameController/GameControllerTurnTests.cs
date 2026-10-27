@@ -89,9 +89,9 @@ public class GameControllerTurnTests
     {
         var game = new TestGame(new FakeShotStrategy(new Coordinate(9, 9), new Coordinate(9, 9)), new FakeShotStrategy(new Coordinate(9, 9))).Started();
 
-        game.Controller.TakeTurn(); // P1 miss
-        game.Controller.TakeTurn(); // P2 miss at (9,9) on P1's board
-        var repeated = game.Controller.TakeTurn(); // P1 again at (9,9)
+        game.Controller.TakeTurn();
+        game.Controller.TakeTurn();
+        var repeated = game.Controller.TakeTurn();
 
         Assert.Equal(ShotResult.Invalid, repeated);
         Assert.Same(game.Player1, game.Controller.GetCurrentPlayer());
@@ -162,7 +162,7 @@ public class GameControllerTurnTests
             turns++;
         }
 
-        Assert.Equal(34 - 1, turns); // P1 needs 17 shots, P2 plays 16 in between
+        Assert.Equal(34 - 1, turns);
         Assert.Equal(ShotResult.Sunk, last);
         Assert.Equal(GameState.Finished, game.Controller.GetState());
         Assert.Same(game.Player1, winner);

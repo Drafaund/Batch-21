@@ -93,7 +93,6 @@ public class LoadTests : IClassFixture<ApiFactory>
         _output.WriteLine($"memory kept by {games} finished games: {(memoryAfter - memoryBefore) / 1024.0:F0} KB = {(memoryAfter - memoryBefore) / 1024.0 / games:F1} KB per game");
 
         Assert.True(store.Count >= games);
-        // A generous guard, not a benchmark: a request that waits this long means something blocks.
         Assert.True(p95 < 1000, $"p95 was {p95:F1} ms");
     }
 
@@ -113,11 +112,9 @@ public class LoadTests : IClassFixture<ApiFactory>
             var results = await Task.WhenAll(KeepFiringAsync(ann), KeepFiringAsync(bob));
             Interlocked.Add(ref rejected, results[0].Rejected + results[1].Rejected);
 
-            // Ann fires first, so she has the same number of shots as Bob, or one more when she wins.
             var difference = results[0].Accepted - results[1].Accepted;
             Assert.InRange(difference, 0, 1);
 
-            // What the server counted agrees with what it accepted: no shot was lost or counted twice.
             Assert.Equal(results[0].Accepted, CountShots(await ann.ViewAsync()));
             Assert.Equal(results[1].Accepted, CountShots(await bob.ViewAsync()));
         }
@@ -180,7 +177,6 @@ public class LoadTests : IClassFixture<ApiFactory>
             await annHub.WaitForAsync<GameStartedEvent>(GameEventNames.GameStarted);
             await bobHub.WaitForAsync<GameStartedEvent>(GameEventNames.GameStarted);
 
-            // The players alternate. Both fleets lie in rows 0 to 4, so every shot at row 0 is a hit.
             for (var shot = 0; shot < shotsPerGame; shot++)
             {
                 var shooter = shot % 2 == 0 ? ann : bob;
@@ -197,7 +193,6 @@ public class LoadTests : IClassFixture<ApiFactory>
 
                 var events = hub.All<ShotResolvedEvent>(GameEventNames.ShotResolved).ToList();
                 Assert.Equal(shotsPerGame, events.Count);
-                // Each change of the game has its own version, so no event was delivered twice or replaced by another.
                 Assert.Equal(shotsPerGame, events.Select(e => e.View.Version).Distinct().Count());
                 Assert.Equal(shotsPerGame / 2, events.Count(e => e.Shooter == "you"));
             }

@@ -1,6 +1,5 @@
 namespace Battleship.Core;
 
-// Setup stage: placing ships and starting the game.
 public partial class GameController
 {
     private const int MaxRandomPlacementAttempts = 1000;

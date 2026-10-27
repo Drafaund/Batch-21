@@ -3,9 +3,7 @@ import type { OpponentKind } from '../api/types'
 
 interface StartScreenProps {
   busy: boolean
-  /** Starts a game against a bot, or opens a room when the opponent is `Human`. */
   onStart: (playerName: string, opponent: OpponentKind) => void
-  /** Joins the room of a friend with the code they shared. */
   onJoin: (playerName: string, code: string) => void
 }
 
@@ -89,7 +87,6 @@ export function StartScreen({ busy, onStart, onJoin }: StartScreenProps) {
             value={code}
             onChange={(event) => setCode(event.target.value)}
             onKeyDown={(event) => {
-              // Enter here joins the room; it must not start a game against a bot.
               if (event.key === 'Enter') {
                 event.preventDefault()
                 handleJoin()

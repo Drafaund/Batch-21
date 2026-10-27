@@ -1,6 +1,5 @@
 namespace Battleship.Core;
 
-// Rules stage: remaining ships, the winner, and the end of the game.
 public partial class GameController
 {
     public int GetRemainingShips(IPlayer player)

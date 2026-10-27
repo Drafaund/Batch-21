@@ -94,9 +94,8 @@ public class GameControllerTakeTurnTargetTests
     public void TakeTurnWithTarget_CellAlreadyFiredAt_ReturnsInvalidAndKeepsTurn()
     {
         var game = new TestGame().Started();
-        game.Controller.TakeTurn(new Coordinate(9, 9)); // player 1
-        game.Controller.TakeTurn(new Coordinate(9, 9)); // player 2, on the other board
-        // Back to player 1, who already fired at (9,9).
+        game.Controller.TakeTurn(new Coordinate(9, 9));
+        game.Controller.TakeTurn(new Coordinate(9, 9));
 
         var result = game.Controller.TakeTurn(new Coordinate(9, 9));
 

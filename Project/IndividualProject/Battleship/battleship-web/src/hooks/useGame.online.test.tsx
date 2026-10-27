@@ -9,7 +9,6 @@ const lobby = makeView({ phase: 'Lobby', opponent: null, you: { seat: 1, name: '
 const created = { code: 'K7QF2', playerToken: 'secret', seat: 1, view: lobby }
 const placing = makeView({ version: 3, phase: 'Placing', opponent: { name: 'Bob', connected: false } })
 
-/** Ann opens a room: she is in the lobby and the game is connected to the fake server. */
 async function openedRoom(overrides = {}) {
   const api = makeFakeApi({ createGame: async () => created, getGame: async () => lobby, ...overrides })
   const server = makeFakeRealtime()

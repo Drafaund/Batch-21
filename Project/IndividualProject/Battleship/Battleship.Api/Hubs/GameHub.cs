@@ -29,7 +29,6 @@ internal sealed class GameHub : Hub
 
     private GameAccess GetAccess()
     {
-        // The HTTP context of the request that opened the connection carries what the authentication step found.
         var context = Context.GetHttpContext();
         return context?.Items[AccessKey] is GameAccess access
             ? access

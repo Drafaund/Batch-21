@@ -5,7 +5,6 @@ namespace Battleship.ConsoleApp;
 
 public class BoardRenderer
 {
-    // Two boards side by side need about 95 columns; narrower terminals get them stacked.
     private const int SideBySideMinWidth = 100;
     private const string Legend = "[blue]~[/] water   [bold white]#[/] ship   [bold red]X[/] hit   [yellow]o[/] miss";
 

@@ -77,7 +77,6 @@ public class PlacementPhase
                 ? ValidationResult.Success()
                 : ValidationResult.Error($"[red]Invalid format. Use a letter A-{lastLetter} and a number 1-{boardSize}, for example A-1.[/]"));
 
-        // The validator above only lets a parsable answer through.
         CoordinateFormat.TryParse(_screen.Prompt(prompt), boardSize, out var start);
         return start!.Value;
     }

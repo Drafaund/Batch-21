@@ -5,7 +5,6 @@ interface FleetStatusProps {
   enemyShipsRemaining: number
 }
 
-/** Which of the player's ships still float, and how many enemy ships are left. */
 export function FleetStatus({ ships, enemyShipsRemaining }: FleetStatusProps) {
   return (
     <section className="fleet-status" aria-label="Fleet status">

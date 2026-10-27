@@ -102,7 +102,6 @@ public class TurnTimeoutTests : IClassFixture<FastTurnApiFactory>, IClassFixture
         await ann.FireOkAsync(0, 0);
         var finished = await WaitUntilFinishedAsync(bob);
 
-        // Ann fired in time, so it is Bob who ran out of time.
         Assert.Equal("opponent", finished.Winner);
         Assert.Equal("Timeout", finished.EndReason);
         Assert.Equal("you", (await ann.ViewAsync()).Winner);
@@ -113,7 +112,6 @@ public class TurnTimeoutTests : IClassFixture<FastTurnApiFactory>, IClassFixture
     {
         var (ann, bob) = await NewBattleAsync(_fastHttp);
 
-        // Eight shots, 250 ms apart: two seconds in total, far more than the 700 ms one player may take.
         for (var i = 0; i < 4; i++)
         {
             await ann.FireOkAsync(i, 0);
@@ -136,7 +134,6 @@ public class TurnTimeoutTests : IClassFixture<FastTurnApiFactory>, IClassFixture
         await ann.FireOkAsync(50, 50);
         var finished = await WaitUntilFinishedAsync(ann);
 
-        // The invalid shot kept the turn and the clock that was already running.
         Assert.Equal("Timeout", finished.EndReason);
         Assert.Equal("opponent", finished.Winner);
     }

@@ -1,6 +1,5 @@
 import type { LogEntry } from '../hooks/useGame'
 
-/** The latest shots in words, read out by screen readers as they arrive. */
 export function MessageLog({ entries }: { entries: LogEntry[] }) {
   return (
     <section className="message-log" aria-label="Shots">

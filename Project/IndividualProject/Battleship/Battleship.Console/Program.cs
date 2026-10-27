@@ -4,8 +4,6 @@ using Microsoft.Extensions.Logging;
 using Serilog;
 using Spectre.Console;
 
-// Composition root: every concrete object of the game is created here, including the five ships of each player.
-
 const int BotPauseMilliseconds = 700;
 
 if (!AnsiConsole.Profile.Capabilities.Interactive)

@@ -16,7 +16,6 @@ public class PrivacyTests : IClassFixture<ApiFactory>
     {
         var names = Enum.GetNames<EnemyCell>();
 
-        // Sunk marks the cells of a ship that was hit everywhere; there is still no value for a ship that is afloat.
         Assert.Equal(new[] { "Unknown", "Hit", "Miss", "Sunk" }, names);
     }
 

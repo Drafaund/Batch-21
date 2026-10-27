@@ -12,7 +12,6 @@ export interface LogEntry {
   text: string
 }
 
-/** The last emote the opponent sent. The id changes with every one, so the same emote twice in a row still shows twice. */
 export interface IncomingEmote {
   id: number
   emote: EmoteCode
@@ -21,26 +20,20 @@ export interface IncomingEmote {
 export interface GameController {
   view: GameView | null
   busy: boolean
-  /** True while a game saved from an earlier visit is being loaded. */
   resuming: boolean
-  /** True in a room with another human, where events arrive from the server. */
   online: boolean
-  /** State of the real-time connection; only meaningful when `online`. */
   connection: ConnectionStatus
   error: string | null
   log: LogEntry[]
   lastPlayerShot: Coordinate | null
   lastBotShots: Coordinate[]
-  /** The last emote the opponent sent, or null; only in a room. */
   incomingEmote: IncomingEmote | null
   start(playerName: string, opponent: OpponentKind): Promise<void>
   join(playerName: string, code: string): Promise<void>
-  /** Opens the real-time connection again after it gave up. */
   reconnect(): void
   placeShip(type: ShipType, start: Coordinate, orientation: Orientation): Promise<void>
   placeRandomly(): Promise<void>
   fire(target: Coordinate): Promise<void>
-  /** Sends an emote to the opponent. It never marks the game as busy, so the board stays usable. */
   sendEmote(emote: EmoteCode): Promise<void>
   reset(): void
   dismissError(): void
@@ -49,7 +42,6 @@ export interface GameController {
 const MAX_LOG_ENTRIES = 8
 const GAME_GONE = 'This game no longer exists. Start a new game.'
 
-/** Holds the state of the game being played and the actions that change it. */
 export function useGame(api: GameApi, realtime: RealtimeClient = realRealtime): GameController {
   const [session, setSession] = useState<Session | null>(() => loadSession())
   const [view, setView] = useState<GameView | null>(null)
@@ -69,7 +61,6 @@ export function useGame(api: GameApi, realtime: RealtimeClient = realRealtime): 
     setLog((previous) => [...previous, ...entries.map((entry) => ({ ...entry, id: nextLogId.current++ }))].slice(-MAX_LOG_ENTRIES))
   }, [])
 
-  // A view older than the one on screen is ignored, so a late answer cannot undo a newer one.
   const applyView = useCallback((next: GameView) => {
     setView((previous) => (previous && previous.code === next.code && next.version < previous.version ? previous : next))
   }, [])
@@ -137,13 +128,11 @@ export function useGame(api: GameApi, realtime: RealtimeClient = realRealtime): 
     return () => {
       cancelled = true
     }
-    // Only the game saved at the start is resumed; later changes of the session come from the actions below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleEvent = useCallback(
     (event: GameEvent) => {
-      // An emote is not part of the game: it has no view and does not touch the log.
       if (event.type === 'EmoteReceived') {
         setIncomingEmote({ id: nextEmoteId.current++, emote: event.emote })
         return
@@ -162,7 +151,6 @@ export function useGame(api: GameApi, realtime: RealtimeClient = realRealtime): 
           addLog([{ kind: 'info', text: event.connected ? `${opponentName} connected.` : `${opponentName} lost the connection.` }])
           break
         case 'ShotResolved':
-          // The player's own shots are logged from the answer to their request.
           if (event.shooter === 'opponent') {
             addLog([{ kind: 'bot', text: `${opponentName} fired at ${formatCoordinate(event.target)}: ${describeResult(event.result)}` }])
             setLastBotShots([event.target])
@@ -186,7 +174,6 @@ export function useGame(api: GameApi, realtime: RealtimeClient = realRealtime): 
   const sessionCode = session?.code
   const sessionToken = session?.token
 
-  // In a room with another human the server pushes events; every one carries this player's full view.
   useEffect(() => {
     if (!online || !sessionCode || !sessionToken) {
       return
@@ -197,7 +184,6 @@ export function useGame(api: GameApi, realtime: RealtimeClient = realRealtime): 
       onStatus: (status) => {
         setConnection(status)
         if (status === 'connected') {
-          // Events sent while the connection was down are gone, so ask for the current state.
           api
             .getGame(sessionCode, sessionToken)
             .then(applyView)
@@ -209,7 +195,6 @@ export function useGame(api: GameApi, realtime: RealtimeClient = realRealtime): 
     return () => {
       void connectionToGame.stop()
     }
-    // The handlers are stable callbacks; the connection only changes with the game or a manual retry.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [online, sessionCode, sessionToken, connectAttempt, realtime, api])
 
@@ -242,7 +227,6 @@ export function useGame(api: GameApi, realtime: RealtimeClient = realRealtime): 
         try {
           joined = await api.joinGame(code.trim().toUpperCase(), playerName)
         } catch (caught) {
-          // There is no game of this player to forget yet, so a wrong code is just a message.
           if (caught instanceof ApiError) {
             setError(caught.message)
             return
@@ -303,7 +287,6 @@ export function useGame(api: GameApi, realtime: RealtimeClient = realRealtime): 
 
         if (response.result !== 'Invalid') {
           setLastPlayerShot(target)
-          // In a room the opponent's shot comes as an event and is highlighted from there.
           if (!current.online) {
             setLastBotShots(response.botShots.map((shot) => shot.target))
           }
@@ -318,7 +301,6 @@ export function useGame(api: GameApi, realtime: RealtimeClient = realRealtime): 
         const { code, token } = requireSession()
         await api.sendEmote(code, token, emote)
       } catch (caught) {
-        // The server refused it as too fast. The buttons already wait, so there is nothing to tell the player.
         if (caught instanceof ApiError && caught.status === 429) {
           return
         }

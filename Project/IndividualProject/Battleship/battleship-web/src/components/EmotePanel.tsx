@@ -4,7 +4,6 @@ import { EMOTE_COOLDOWN_MS, EMOTE_VISIBLE_MS, EMOTES, findEmote } from '../domai
 import type { IncomingEmote } from '../hooks/useGame'
 
 interface EmotePanelProps {
-  /** The last emote the opponent sent. */
   incoming: IncomingEmote | null
   opponentName: string
   onSend: (emote: EmoteCode) => void
@@ -24,17 +23,14 @@ function saveHidden(hidden: boolean): void {
   try {
     window.localStorage.setItem(HIDE_KEY, String(hidden))
   } catch {
-    // Storage can be blocked; the choice just lasts until the page is reloaded.
   }
 }
 
-/** Buttons to send an emote and a short-lived bubble for the one that came in. Only shown in a room with another human. */
 export function EmotePanel({ incoming, opponentName, onSend }: EmotePanelProps) {
   const [hidden, setHidden] = useState(loadHidden)
   const [cooling, setCooling] = useState(false)
   const [dismissedId, setDismissedId] = useState(0)
 
-  // The same wait as the server's, so the player is not told "too fast" for a click the page could have refused itself.
   useEffect(() => {
     if (!cooling) {
       return
@@ -78,7 +74,6 @@ export function EmotePanel({ incoming, opponentName, onSend }: EmotePanelProps) 
         Hide emotes from {opponentName}
       </label>
 
-      {/* The region stays in the page so a screen reader announces the bubble when it appears. */}
       <div className="emote-stage" role="status">
         {shown && (
           <span key={incoming?.id} className="emote-bubble">

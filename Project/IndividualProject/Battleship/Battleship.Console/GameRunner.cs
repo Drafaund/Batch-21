@@ -73,7 +73,6 @@ public class GameRunner
             var current = _controller.GetCurrentPlayer();
             var participant = Of(current);
 
-            // A shot that was Invalid keeps the turn, so the same player is asked again without redrawing.
             if (!ReferenceEquals(current, lastPlayer))
             {
                 BeginTurn(participant);

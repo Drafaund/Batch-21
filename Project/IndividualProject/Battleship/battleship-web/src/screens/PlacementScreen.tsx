@@ -21,7 +21,6 @@ export function PlacementScreen({ view, busy, onPlace, onPlaceRandomly }: Placem
   const { placed, remaining } = view.placement
   const selected = chosen && remaining.includes(chosen) ? chosen : remaining[0]
   const canPlaceRandomly = placed.length === 0
-  // Against a human, the game starts only when the other fleet is complete too.
   const waitingForOpponent = remaining.length === 0
 
   useEffect(() => {

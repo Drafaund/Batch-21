@@ -11,7 +11,6 @@ export function grid<T>(value: T, size = 10): T[][] {
   return Array.from({ length: size }, () => Array.from({ length: size }, () => value))
 }
 
-/** A new game: nothing placed yet. */
 export function makeView(overrides: Partial<GameView> = {}): GameView {
   return {
     code: 'K7QF2',
@@ -30,7 +29,6 @@ export function makeView(overrides: Partial<GameView> = {}): GameView {
   }
 }
 
-/** A game in progress where the player's ships lie in rows A to E, all horizontal, starting at column 1. */
 export function fleetView(overrides: Partial<GameView> = {}): GameView {
   const cells = grid<OwnCell>('Water')
   const ships: ShipView[] = SHIP_TYPES.map((type, y) => {
@@ -52,17 +50,14 @@ export function fleetView(overrides: Partial<GameView> = {}): GameView {
   })
 }
 
-/** A copy of the enemy board with one cell changed. */
 export function withEnemyCell(view: GameView, x: number, y: number, value: EnemyCell): GameView {
   const cells = view.enemyBoard.cells.map((row) => [...row])
   cells[y][x] = value
   return { ...view, enemyBoard: { size: view.enemyBoard.size, cells } }
 }
 
-/** A fake server. Every call fails unless a test gives it an answer. */
 export function makeFakeApi(overrides: Partial<GameApi> = {}): GameApi {
   const unexpected = () => Promise.reject(new Error('Unexpected API call'))
-  // Every method is a spy, so a test can check how it was called.
   return {
     createGame: vi.fn(overrides.createGame ?? unexpected),
     joinGame: vi.fn(overrides.joinGame ?? unexpected),
@@ -74,7 +69,6 @@ export function makeFakeApi(overrides: Partial<GameApi> = {}): GameApi {
   }
 }
 
-/** A fake SignalR connection: a test sends events and status changes as if they came from the server. */
 export function makeFakeRealtime() {
   const stop = vi.fn(async () => {})
   let handlers: RealtimeHandlers | null = null

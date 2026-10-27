@@ -25,8 +25,8 @@ public class GameControllerPlacementTests
     }
 
     [Theory]
-    [InlineData(5, 0, Orientation.Horizontal)] // x = 5..9, ends on the last column
-    [InlineData(0, 5, Orientation.Vertical)] // y = 5..9, ends on the last row
+    [InlineData(5, 0, Orientation.Horizontal)]
+    [InlineData(0, 5, Orientation.Vertical)]
     public void ValidatePlaceShip_CarrierEndingOnLastCell_ReturnsTrue(int x, int y, Orientation orientation)
     {
         var game = new TestGame();
@@ -37,8 +37,8 @@ public class GameControllerPlacementTests
     }
 
     [Theory]
-    [InlineData(6, 0, Orientation.Horizontal)] // x = 6..10
-    [InlineData(0, 6, Orientation.Vertical)] // y = 6..10
+    [InlineData(6, 0, Orientation.Horizontal)]
+    [InlineData(0, 6, Orientation.Vertical)]
     [InlineData(-1, 0, Orientation.Horizontal)]
     [InlineData(0, -1, Orientation.Vertical)]
     [InlineData(10, 0, Orientation.Vertical)]

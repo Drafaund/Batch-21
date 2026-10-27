@@ -8,9 +8,7 @@ import { PlacementScreen } from './screens/PlacementScreen'
 import { StartScreen } from './screens/StartScreen'
 
 interface AppProps {
-  /** The server to talk to. Tests pass a fake. */
   api?: GameApi
-  /** The real-time channel for games against another human. Tests pass a fake. */
   realtime?: RealtimeClient
 }
 

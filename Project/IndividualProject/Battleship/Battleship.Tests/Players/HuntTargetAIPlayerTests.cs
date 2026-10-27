@@ -50,7 +50,7 @@ public class HuntTargetAIPlayerTests
     [Fact]
     public void SelectTarget_AfterHit_FiresAtAllFourNeighboursOfTheHit()
     {
-        var bot = NewBot(new FakeRandom(55)); // hunting picks the 56th unfired cell: (5,5)
+        var bot = NewBot(new FakeRandom(55));
         var hit = bot.SelectTarget();
         Assert.Equal(new Coordinate(5, 5), hit);
         bot.ReceiveResult(hit, ShotResult.Hit);
@@ -65,7 +65,7 @@ public class HuntTargetAIPlayerTests
     [Fact]
     public void SelectTarget_AfterMiss_KeepsHuntingInsteadOfFiringAtNeighbours()
     {
-        var bot = NewBot(new FakeRandom(55, 0)); // first hunt: (5,5), second hunt: first unfired cell (0,0)
+        var bot = NewBot(new FakeRandom(55, 0));
         var shot = bot.SelectTarget();
         bot.ReceiveResult(shot, ShotResult.Miss);
 
@@ -79,7 +79,7 @@ public class HuntTargetAIPlayerTests
     [Fact]
     public void SelectTarget_HitInCorner_OnlyQueuesNeighboursInsideBoard()
     {
-        var bot = NewBot(new FakeRandom(0)); // first unfired cell: (0,0)
+        var bot = NewBot(new FakeRandom(0));
         var hit = bot.SelectTarget();
         Assert.Equal(new Coordinate(0, 0), hit);
         bot.ReceiveResult(hit, ShotResult.Hit);
@@ -92,28 +92,27 @@ public class HuntTargetAIPlayerTests
     [Fact]
     public void SelectTarget_AfterSunk_DropsQueueAndGoesBackToHunting()
     {
-        var bot = NewBot(new FakeRandom(55, 0)); // hunts: (5,5), then after the sink the first unfired cell
-        var hit = bot.SelectTarget(); // (5,5)
+        var bot = NewBot(new FakeRandom(55, 0));
+        var hit = bot.SelectTarget();
         bot.ReceiveResult(hit, ShotResult.Hit);
-        var neighbour = bot.SelectTarget(); // (5,4), from the queue
+        var neighbour = bot.SelectTarget();
         bot.ReceiveResult(neighbour, ShotResult.Sunk);
 
         var next = bot.SelectTarget();
 
         Assert.False(AreNeighbours(hit, next));
-        Assert.Equal(new Coordinate(0, 0), next); // back to hunting: first unfired cell
+        Assert.Equal(new Coordinate(0, 0), next);
     }
 
     [Fact]
     public void SelectTarget_SecondHitWhileTargeting_QueuesItsNeighboursToo()
     {
         var bot = NewBot(new FakeRandom(55));
-        var first = bot.SelectTarget(); // (5,5)
+        var first = bot.SelectTarget();
         bot.ReceiveResult(first, ShotResult.Hit);
-        var second = bot.SelectTarget(); // (5,4)
+        var second = bot.SelectTarget();
         bot.ReceiveResult(second, ShotResult.Hit);
 
-        // 3 neighbours left from the first hit, plus (5,3), (4,4), (6,4) from the second hit.
         var queued = Fire(bot, 6, ShotResult.Miss);
 
         Assert.All(queued, t => Assert.True(
@@ -129,7 +128,7 @@ public class HuntTargetAIPlayerTests
         var shots = new List<Coordinate>();
         for (var i = 0; i < 2; i++)
         {
-            var target = bot.SelectTarget(); // (5,5), then (5,4); the second hit must not re-queue (5,5)
+            var target = bot.SelectTarget();
             bot.ReceiveResult(target, ShotResult.Hit);
             shots.Add(target);
         }

@@ -411,7 +411,6 @@ public sealed class GameSession
         });
     }
 
-    // Each check returns the reason the action is not allowed right now, or null when it is.
     private Error? CheckPlacing()
     {
         if (_controller.GetState() != GameState.Setup)

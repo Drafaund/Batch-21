@@ -32,7 +32,6 @@ function setup({ view = fleetView(), busy = false, log = [], withEmotes = false 
   return { onFire, onPlayAgain, onSendEmote, ...utils }
 }
 
-/** The Destroyer lies at E-1 and E-2 in `fleetView`; both cells are hit and the ship has sunk. */
 function viewWithSunkDestroyer(): GameView {
   const view = fleetView()
   const cells = view.ownBoard.cells.map((row) => [...row])
