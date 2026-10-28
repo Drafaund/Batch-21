@@ -151,6 +151,76 @@ void PrintW3()
 
 #endregion
 
+#region Week 4
+
+var myList = new ConfigurableLinkedList();
+myList.SetSorting((a, b) => b.CompareTo(a));
+myList.AddFilter(val => val > 2);
+myList.AddFilter(val => val != 5);
+
+myList.Append(5);
+myList.Append(2);
+myList.Append(8);
+myList.Append(3);
+myList.Print();
+
+class ConfigurableLinkedList
+{
+    private Node? _head;
+    private Func<int, int, int>? _comparer;
+    private readonly List<Func<int, bool>> _filters = new();
+
+    public void SetSorting(Func<int, int, int> comparer)
+    {
+        _comparer = comparer;
+    }
+
+    public void AddFilter(Func<int, bool> filterRule)
+    {
+        _filters.Add(filterRule);
+    }
+
+    public void Append(int val)
+    {
+        var node = new Node(val);
+        if (_head == null)
+        {
+            _head = node;
+        }
+        else
+        {
+            var current = _head;
+            while (current.Next != null)
+            {
+                current = current.Next;
+            }
+            current.Next = node;
+        }
+        Console.WriteLine($"Appended {val}");
+    }
+
+    public void Print()
+    {
+        var values = new List<int>();
+        for (var current = _head; current != null; current = current.Next)
+        {
+            if (_filters.All(filter => filter(current.Value)))
+            {
+                values.Add(current.Value);
+            }
+        }
+
+        if (_comparer != null)
+        {
+            values = values.OrderBy(val => val, Comparer<int>.Create(new Comparison<int>(_comparer))).ToList();
+        }
+
+        Console.WriteLine($"Sequence: {string.Join(" -> ", values)}");
+    }
+}
+
+#endregion
+
 #region Node
 
 class Node
