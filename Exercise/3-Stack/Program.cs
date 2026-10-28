@@ -1,3 +1,31 @@
+#region Week 1
+
+var stackW1 = new Stack<string>();
+
+TypeW1("foo");
+TypeW1("bar");
+UndoW1();
+UndoW1();
+
+void TypeW1(string word)
+{
+    stackW1.Push(word);
+    Console.WriteLine($"Typed {word}");
+}
+
+void UndoW1()
+{
+    if (stackW1.Count == 0)
+    {
+        Console.WriteLine("There's nothing to undo");
+        return;
+    }
+
+    Console.WriteLine($"Undid {stackW1.Pop()}");
+}
+
+#endregion
+
 #region Week 2
 
 const int maxHistory = 3;
@@ -101,6 +129,89 @@ void RedoW3()
     var word = redoStackW3.Pop();
     stackW3.Push(word);
     Console.WriteLine($"Redid {word}");
+}
+
+#endregion
+
+#region Week 4 - History Class with Validation Rules
+
+var history = new History();
+history.AddValidationRule(word => !string.IsNullOrWhiteSpace(word));
+history.AddValidationRule(word => word.Length <= 10);
+
+history.Type("hello");
+history.Type("");
+class History
+{
+    private readonly int _maxHistory;
+    private readonly Stack<string> _undoStack = new();
+    private readonly Stack<string> _redoStack = new();
+    private readonly List<Func<string, bool>> _rules = new();
+
+    public History(int maxHistory = 3)
+    {
+        _maxHistory = maxHistory;
+    }
+
+    public void AddValidationRule(Func<string, bool> rule)
+    {
+        _rules.Add(rule);
+    }
+
+    public void Type(string word)
+    {
+        if (!_rules.All(rule => rule(word)))
+        {
+            Console.WriteLine($"Rejected {word}");
+            return;
+        }
+
+        _redoStack.Clear();
+
+        if (_undoStack.Count == _maxHistory)
+        {
+            var items = _undoStack.ToArray();
+            _undoStack.Clear();
+
+            for (var index = items.Length - 2; index >= 0; index--)
+            {
+                _undoStack.Push(items[index]);
+            }
+
+            Console.WriteLine($"Dropped bottom, Typed {word}");
+            _undoStack.Push(word);
+            return;
+        }
+
+        _undoStack.Push(word);
+        Console.WriteLine($"Typed {word}");
+    }
+
+    public void Undo()
+    {
+        if (_undoStack.Count == 0)
+        {
+            Console.WriteLine("There's nothing to undo");
+            return;
+        }
+
+        var word = _undoStack.Pop();
+        _redoStack.Push(word);
+        Console.WriteLine($"Undid {word}");
+    }
+
+    public void Redo()
+    {
+        if (_redoStack.Count == 0)
+        {
+            Console.WriteLine("There's nothing to redo");
+            return;
+        }
+
+        var word = _redoStack.Pop();
+        _undoStack.Push(word);
+        Console.WriteLine($"Redid {word}");
+    }
 }
 
 #endregion
