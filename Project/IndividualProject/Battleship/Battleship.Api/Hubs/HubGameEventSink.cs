@@ -5,12 +5,12 @@ namespace Battleship.Api;
 internal sealed class HubGameEventSink : IGameEventSink
 {
     private readonly IHubContext<GameHub> _hub;
-    private readonly ILogger<HubGameEventSink> _logger;
+    private readonly ILogger _logger;
 
-    public HubGameEventSink(IHubContext<GameHub> hub, ILogger<HubGameEventSink> logger)
+    public HubGameEventSink(IHubContext<GameHub> hub, ILogger logger)
     {
         _hub = hub;
-        _logger = logger;
+        _logger = logger.ForContext<HubGameEventSink>();
     }
 
     public void Publish(string code, IReadOnlyList<SeatEvent> events)
@@ -29,7 +29,7 @@ internal sealed class HubGameEventSink : IGameEventSink
         }
         catch (Exception exception)
         {
-            _logger.LogWarning(exception, "Game {Code}: could not send events", code);
+            _logger.ForContext(LogEvents.GameCodeProperty, code).Event(LogEvents.EventDeliveryFailed).Warning(exception, "Could not send events");
         }
     }
 }

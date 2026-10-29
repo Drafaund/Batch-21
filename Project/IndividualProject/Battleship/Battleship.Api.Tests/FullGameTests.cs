@@ -2,17 +2,8 @@ using Battleship.Core;
 
 namespace Battleship.Api.Tests;
 
-public class FullGameTests : IClassFixture<ApiFactory>
+public class FullGameTests : ApiTestFixture<ApiFactory>
 {
-    private readonly ApiFactory _factory;
-    private readonly HttpClient _http;
-
-    public FullGameTests(ApiFactory factory)
-    {
-        _factory = factory;
-        _http = factory.CreateClient();
-    }
-
     private static async Task<(ShotResponse Last, int Shots, List<BotShotView> BotShots)> PlayToTheEndAsync(GameClient game)
     {
         ShotResponse? last = null;
@@ -25,7 +16,7 @@ public class FullGameTests : IClassFixture<ApiFactory>
             {
                 last = await game.FireOkAsync(x, y);
                 shots++;
-                Assert.NotEqual(ShotResult.Invalid, last.Result);
+                Assert.That(last.Result, Is.Not.EqualTo(ShotResult.Invalid));
                 botShots.AddRange(last.BotShots);
             }
         }
@@ -33,91 +24,90 @@ public class FullGameTests : IClassFixture<ApiFactory>
         return (last!, shots, botShots);
     }
 
-    [Theory]
-    [InlineData("Random")]
-    [InlineData("HuntTarget")]
+    [TestCase("Random")]
+    [TestCase("HuntTarget")]
     public async Task FullGame_PlayedOverHttp_EndsWithAWinnerAndAConsistentFinalView(string opponent)
     {
-        var game = await GameClient.CreateAsync(_http, "Ann", opponent);
+        var game = await GameClient.CreateAsync(Http, "Ann", opponent);
         await game.PlaceRandomAsync();
 
         var (last, shots, botShots) = await PlayToTheEndAsync(game);
 
         var view = last.View;
-        Assert.Equal(GamePhase.Finished, view.Phase);
-        Assert.False(view.YourTurn);
-        Assert.Contains(view.Winner, new[] { "you", "opponent" });
-        Assert.InRange(shots, 17, 100);
+        Assert.That(view.Phase, Is.EqualTo(GamePhase.Finished));
+        Assert.That(view.YourTurn, Is.False);
+        Assert.That(new[] { "you", "opponent" }, Does.Contain(view.Winner));
+        Assert.That(shots, Is.InRange(17, 100));
 
         if (view.Winner == "you")
         {
-            Assert.Equal(0, view.EnemyShipsRemaining);
-            Assert.Equal(17, view.EnemyBoard.Cells.Sum(row => row.Count(c => c == EnemyCell.Sunk)));
-            Assert.Equal(0, view.EnemyBoard.Cells.Sum(row => row.Count(c => c == EnemyCell.Hit)));
-            Assert.Contains(view.OwnShips, ship => !ship.IsSunk);
+            Assert.That(view.EnemyShipsRemaining, Is.EqualTo(0));
+            Assert.That(view.EnemyBoard.Cells.Sum(row => row.Count(c => c == EnemyCell.Sunk)), Is.EqualTo(17));
+            Assert.That(view.EnemyBoard.Cells.Sum(row => row.Count(c => c == EnemyCell.Hit)), Is.EqualTo(0));
+            Assert.That(view.OwnShips.Any(ship => !ship.IsSunk), Is.True);
         }
         else
         {
-            Assert.All(view.OwnShips, ship => Assert.True(ship.IsSunk));
-            Assert.True(view.EnemyShipsRemaining > 0);
+            Assert.That(view.OwnShips.Select(ship => ship.IsSunk), Is.All.True);
+            Assert.That(view.EnemyShipsRemaining > 0, Is.True);
         }
 
-        Assert.Equal(botShots.Count, botShots.Select(s => s.Target).Distinct().Count());
-        Assert.All(botShots, s => Assert.NotEqual(ShotResult.Invalid, s.Result));
+        Assert.That(botShots.Select(s => s.Target).Distinct().Count(), Is.EqualTo(botShots.Count));
+        Assert.That(botShots.Select(s => s.Result), Is.All.Not.EqualTo(ShotResult.Invalid));
     }
 
-    [Fact]
+    [Test]
     public async Task FullGame_AfterItEnded_ShotsAndShipsAreRefusedButTheViewStaysReadable()
     {
-        var game = await GameClient.CreateAsync(_http);
+        var game = await GameClient.CreateAsync(Http);
         await game.PlaceRandomAsync();
         await PlayToTheEndAsync(game);
 
         await GameClient.AssertProblemAsync(await game.FireAsync(0, 0), 409);
         await GameClient.AssertProblemAsync(await game.PlaceShipAsync(ShipType.Destroyer, 0, 0, Orientation.Horizontal), 409);
-        Assert.Equal(GamePhase.Finished, (await game.ViewAsync()).Phase);
+        Assert.That((await game.ViewAsync()).Phase, Is.EqualTo(GamePhase.Finished));
     }
 
-    [Fact]
+    [Test]
     public async Task FullGame_EndsOnceAndTheWinnerIsLogged()
     {
-        var game = await GameClient.CreateAsync(_http);
+        var game = await GameClient.CreateAsync(Http);
         await game.PlaceRandomAsync();
 
         await PlayToTheEndAsync(game);
 
-        var wins = _factory.Logs.Messages.Count(m => m.Contains($"Game {game.Code}") && m.EndsWith("won"));
-        Assert.Equal(1, wins);
+        var wins = Factory.Logs.ForGame(game.Code).Count(entry => entry.EventName == LogEvents.GameWon);
+        Assert.That(wins, Is.EqualTo(1));
     }
 
-    [Fact]
+    [Test]
     public async Task FullGame_WinningShot_ReportsSunkOrIsFollowedByNoBotReply()
     {
-        var game = await GameClient.CreateAsync(_http);
+        var game = await GameClient.CreateAsync(Http);
         await game.PlaceRandomAsync();
 
         var (last, _, _) = await PlayToTheEndAsync(game);
 
         if (last.View.Winner == "you")
         {
-            Assert.Equal(ShotResult.Sunk, last.Result);
-            Assert.Empty(last.BotShots);
+            Assert.That(last.Result, Is.EqualTo(ShotResult.Sunk));
+            Assert.That(last.BotShots, Is.Empty);
         }
         else
         {
-            Assert.Single(last.BotShots);
-            Assert.Equal(ShotResult.Sunk, last.BotShots[0].Result);
+            Assert.That(last.BotShots, Has.Exactly(1).Items);
+            Assert.That(last.BotShots[0].Result, Is.EqualTo(ShotResult.Sunk));
         }
     }
 
-    [Fact]
+    [Test]
     public async Task FullGame_ManualPlacementThenAllShots_AlsoFinishes()
     {
-        var game = await GameClient.CreateAsync(_http, "Ann", "HuntTarget");
+        var game = await GameClient.CreateAsync(Http, "Ann", "HuntTarget");
         await game.PlaceFleetAsync();
 
         var (last, _, _) = await PlayToTheEndAsync(game);
 
-        Assert.Equal(GamePhase.Finished, last.View.Phase);
+        Assert.That(last.View.Phase, Is.EqualTo(GamePhase.Finished));
     }
 }

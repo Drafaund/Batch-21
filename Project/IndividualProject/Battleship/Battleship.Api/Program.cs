@@ -3,7 +3,6 @@ using Battleship.Api;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.SignalR;
 using Serilog;
-using Serilog.Events;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,15 +24,18 @@ builder.Services.AddSingleton<IGameEventSink, HubGameEventSink>();
 builder.Services.AddSingleton<GameSessionFactory>();
 builder.Services.AddSingleton<GameStore>();
 
-var logFile = Path.Combine(AppContext.BaseDirectory, "logs", "battleship-api-.log");
-var serilog = new LoggerConfiguration()
-    .MinimumLevel.Information()
-    .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
-    .WriteTo.File(logFile, rollingInterval: RollingInterval.Day, shared: true)
-    .CreateLogger();
-builder.Logging.AddSerilog(serilog, dispose: true);
+// The static Log.Logger is left alone: every host (and every test host) keeps its own logger.
+// FromLogContext is what carries the ASP.NET request scope (RequestId, RequestPath, ...) onto entries written straight through Serilog.
+builder.Host.UseSerilog(
+    (context, services, configuration) => configuration
+        .ReadFrom.Configuration(context.Configuration)
+        .ReadFrom.Services(services)
+        .Enrich.FromLogContext(),
+    preserveStaticLogger: true);
 
 var app = builder.Build();
+
+app.UseSerilogRequestLogging(options => options.Logger = app.Services.GetRequiredService<Serilog.ILogger>());
 
 app.UseExceptionHandler();
 

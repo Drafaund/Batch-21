@@ -78,11 +78,11 @@ internal sealed class GameClient
 
     public static async Task AssertProblemAsync(HttpResponseMessage response, int expectedStatus)
     {
-        Assert.Equal(expectedStatus, (int)response.StatusCode);
-        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+        Assert.That((int)response.StatusCode, Is.EqualTo(expectedStatus));
+        Assert.That(response.Content.Headers.ContentType?.MediaType, Is.EqualTo("application/problem+json"));
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        Assert.Equal(expectedStatus, document.RootElement.GetProperty("status").GetInt32());
-        Assert.False(string.IsNullOrWhiteSpace(document.RootElement.GetProperty("title").GetString()));
+        Assert.That(document.RootElement.GetProperty("status").GetInt32(), Is.EqualTo(expectedStatus));
+        Assert.That(string.IsNullOrWhiteSpace(document.RootElement.GetProperty("title").GetString()), Is.False);
     }
 
     public Task<HttpResponseMessage> GetAsync() => GetAsync(Token);

@@ -19,29 +19,20 @@ public sealed class FastForfeitApiFactory : ApiFactory
     }
 }
 
-public class HubTests : IClassFixture<FastForfeitApiFactory>
+public class HubTests : ApiTestFixture<FastForfeitApiFactory>
 {
-    private readonly FastForfeitApiFactory _factory;
-    private readonly HttpClient _http;
-
-    public HubTests(FastForfeitApiFactory factory)
-    {
-        _factory = factory;
-        _http = factory.CreateClient();
-    }
-
     private async Task<(GameClient Ann, GameClient Bob)> NewRoomAsync()
     {
-        var ann = await GameClient.CreateRoomAsync(_http, "Ann");
-        var bob = await GameClient.JoinAsync(_http, ann.Code, "Bob");
+        var ann = await GameClient.CreateRoomAsync(Http, "Ann");
+        var bob = await GameClient.JoinAsync(Http, ann.Code, "Bob");
         return (ann, bob);
     }
 
     private async Task<(GameClient Ann, GameClient Bob, HubClient AnnHub, HubClient BobHub)> NewConnectedBattleAsync()
     {
         var (ann, bob) = await NewRoomAsync();
-        var annHub = await HubClient.ConnectAsync(_factory, ann);
-        var bobHub = await HubClient.ConnectAsync(_factory, bob);
+        var annHub = await HubClient.ConnectAsync(Factory, ann);
+        var bobHub = await HubClient.ConnectAsync(Factory, bob);
         await ann.PlaceFleetAsync();
         await bob.PlaceFleetAsync();
         await annHub.WaitForAsync<GameStartedEvent>(GameEventNames.GameStarted);
@@ -49,114 +40,114 @@ public class HubTests : IClassFixture<FastForfeitApiFactory>
         return (ann, bob, annHub, bobHub);
     }
 
-    [Fact]
+    [Test]
     public async Task Connect_WrongToken_IsRefusedWith401()
     {
-        var ann = await GameClient.CreateRoomAsync(_http);
-        await using var hub = HubClient.Build(_factory, ann.Code, "wrong-token");
+        var ann = await GameClient.CreateRoomAsync(Http);
+        await using var hub = HubClient.Build(Factory, ann.Code, "wrong-token");
 
         var exception = await Assert.ThrowsAsync<HttpRequestException>(() => hub.StartAsync());
 
-        Assert.Equal(HttpStatusCode.Unauthorized, exception.StatusCode);
+        Assert.That(exception?.StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
     }
 
-    [Fact]
+    [Test]
     public async Task Connect_MissingToken_IsRefusedWith401()
     {
-        var ann = await GameClient.CreateRoomAsync(_http);
-        await using var hub = HubClient.Build(_factory, ann.Code, null);
+        var ann = await GameClient.CreateRoomAsync(Http);
+        await using var hub = HubClient.Build(Factory, ann.Code, null);
 
         var exception = await Assert.ThrowsAsync<HttpRequestException>(() => hub.StartAsync());
 
-        Assert.Equal(HttpStatusCode.Unauthorized, exception.StatusCode);
+        Assert.That(exception?.StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
     }
 
-    [Fact]
+    [Test]
     public async Task Connect_UnknownCode_IsRefusedWith404()
     {
-        await using var hub = HubClient.Build(_factory, "ZZZZZ", "any-token");
+        await using var hub = HubClient.Build(Factory, "ZZZZZ", "any-token");
 
         var exception = await Assert.ThrowsAsync<HttpRequestException>(() => hub.StartAsync());
 
-        Assert.Equal(HttpStatusCode.NotFound, exception.StatusCode);
+        Assert.That(exception?.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
     }
 
-    [Fact]
+    [Test]
     public async Task Connect_TokenOfAnotherRoom_IsRefused()
     {
-        var ann = await GameClient.CreateRoomAsync(_http);
-        var other = await GameClient.CreateRoomAsync(_http);
-        await using var hub = HubClient.Build(_factory, ann.Code, other.Token);
+        var ann = await GameClient.CreateRoomAsync(Http);
+        var other = await GameClient.CreateRoomAsync(Http);
+        await using var hub = HubClient.Build(Factory, ann.Code, other.Token);
 
         var exception = await Assert.ThrowsAsync<HttpRequestException>(() => hub.StartAsync());
 
-        Assert.Equal(HttpStatusCode.Unauthorized, exception.StatusCode);
+        Assert.That(exception?.StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
     }
 
-    [Fact]
+    [Test]
     public async Task Join_TellsTheWaitingPlayerWhoArrived()
     {
-        var ann = await GameClient.CreateRoomAsync(_http, "Ann");
-        await using var annHub = await HubClient.ConnectAsync(_factory, ann);
+        var ann = await GameClient.CreateRoomAsync(Http, "Ann");
+        await using var annHub = await HubClient.ConnectAsync(Factory, ann);
 
-        var bob = await GameClient.JoinAsync(_http, ann.Code, "Bob");
+        var bob = await GameClient.JoinAsync(Http, ann.Code, "Bob");
 
         var joined = await annHub.WaitForAsync<PlayerJoinedEvent>(GameEventNames.PlayerJoined);
-        Assert.Equal("Bob", joined.Name);
-        Assert.Equal(GamePhase.Placing, joined.View.Phase);
-        Assert.Equal("Bob", joined.View.Opponent?.Name);
-        Assert.Equal(2, bob.Seat);
+        Assert.That(joined.Name, Is.EqualTo("Bob"));
+        Assert.That(joined.View.Phase, Is.EqualTo(GamePhase.Placing));
+        Assert.That(joined.View.Opponent?.Name, Is.EqualTo("Bob"));
+        Assert.That(bob.Seat, Is.EqualTo(2));
     }
 
-    [Fact]
+    [Test]
     public async Task Connect_SecondPlayerConnecting_TellsTheFirstThatTheOpponentIsHere()
     {
         var (ann, bob) = await NewRoomAsync();
-        await using var annHub = await HubClient.ConnectAsync(_factory, ann);
+        await using var annHub = await HubClient.ConnectAsync(Factory, ann);
 
-        await using var bobHub = await HubClient.ConnectAsync(_factory, bob);
+        await using var bobHub = await HubClient.ConnectAsync(Factory, bob);
 
         var connection = await annHub.WaitForAsync<OpponentConnectionEvent>(GameEventNames.OpponentConnection, e => e.Connected);
-        Assert.True(connection.View.Opponent!.Connected);
-        Assert.True((await ann.ViewAsync()).Opponent!.Connected);
+        Assert.That(connection.View.Opponent!.Connected, Is.True);
+        Assert.That((await ann.ViewAsync()).Opponent!.Connected, Is.True);
     }
 
-    [Fact]
+    [Test]
     public async Task Disconnect_TellsTheOpponentAndReconnectingTellsThemAgain()
     {
         var (ann, bob) = await NewRoomAsync();
-        await using var annHub = await HubClient.ConnectAsync(_factory, ann);
-        var bobHub = await HubClient.ConnectAsync(_factory, bob);
+        await using var annHub = await HubClient.ConnectAsync(Factory, ann);
+        var bobHub = await HubClient.ConnectAsync(Factory, bob);
         await annHub.WaitForAsync<OpponentConnectionEvent>(GameEventNames.OpponentConnection, e => e.Connected);
 
         await bobHub.StopAsync();
 
         var dropped = await annHub.WaitForAsync<OpponentConnectionEvent>(GameEventNames.OpponentConnection, e => !e.Connected);
-        Assert.False(dropped.View.Opponent!.Connected);
-        Assert.False((await ann.ViewAsync()).Opponent!.Connected);
+        Assert.That(dropped.View.Opponent!.Connected, Is.False);
+        Assert.That((await ann.ViewAsync()).Opponent!.Connected, Is.False);
 
-        await using var returned = await HubClient.ConnectAsync(_factory, bob);
+        await using var returned = await HubClient.ConnectAsync(Factory, bob);
         var back = await annHub.WaitForAsync<OpponentConnectionEvent>(GameEventNames.OpponentConnection, e => e.Connected && e.View.Version > dropped.View.Version);
-        Assert.True(back.View.Opponent!.Connected);
+        Assert.That(back.View.Opponent!.Connected, Is.True);
     }
 
-    [Fact]
+    [Test]
     public async Task Connect_SecondTabOfTheSamePlayer_DoesNotCountAsADrop()
     {
         var (ann, bob) = await NewRoomAsync();
-        await using var annHub = await HubClient.ConnectAsync(_factory, ann);
-        await using var firstTab = await HubClient.ConnectAsync(_factory, bob);
-        await using var secondTab = await HubClient.ConnectAsync(_factory, bob);
+        await using var annHub = await HubClient.ConnectAsync(Factory, ann);
+        await using var firstTab = await HubClient.ConnectAsync(Factory, bob);
+        await using var secondTab = await HubClient.ConnectAsync(Factory, bob);
         await annHub.WaitForAsync<OpponentConnectionEvent>(GameEventNames.OpponentConnection, e => e.Connected);
 
         await firstTab.StopAsync();
         await Task.Delay(200);
 
-        Assert.DoesNotContain(annHub.All<OpponentConnectionEvent>(GameEventNames.OpponentConnection), e => !e.Connected);
-        Assert.True((await ann.ViewAsync()).Opponent!.Connected);
+        Assert.That(annHub.All<OpponentConnectionEvent>(GameEventNames.OpponentConnection).Any(e => !e.Connected), Is.False);
+        Assert.That((await ann.ViewAsync()).Opponent!.Connected, Is.True);
     }
 
-    [Fact]
+    [Test]
     public async Task Placing_BothFleetsComplete_SendsGameStartedToBothWithTheirOwnView()
     {
         var (ann, bob, annHub, bobHub) = await NewConnectedBattleAsync();
@@ -166,16 +157,16 @@ public class HubTests : IClassFixture<FastForfeitApiFactory>
         var annStarted = await annHub.WaitForAsync<GameStartedEvent>(GameEventNames.GameStarted);
         var bobStarted = await bobHub.WaitForAsync<GameStartedEvent>(GameEventNames.GameStarted);
 
-        Assert.Equal(GamePhase.InProgress, annStarted.View.Phase);
-        Assert.Equal(1, annStarted.View.You.Seat);
-        Assert.True(annStarted.View.YourTurn);
-        Assert.Equal(2, bobStarted.View.You.Seat);
-        Assert.False(bobStarted.View.YourTurn);
-        Assert.Equal("Ann", bobStarted.View.Opponent?.Name);
-        Assert.Equal(ann.Code, bob.Code);
+        Assert.That(annStarted.View.Phase, Is.EqualTo(GamePhase.InProgress));
+        Assert.That(annStarted.View.You.Seat, Is.EqualTo(1));
+        Assert.That(annStarted.View.YourTurn, Is.True);
+        Assert.That(bobStarted.View.You.Seat, Is.EqualTo(2));
+        Assert.That(bobStarted.View.YourTurn, Is.False);
+        Assert.That(bobStarted.View.Opponent?.Name, Is.EqualTo("Ann"));
+        Assert.That(bob.Code, Is.EqualTo(ann.Code));
     }
 
-    [Fact]
+    [Test]
     public async Task Fire_SendsShotResolvedToBothPlayersFromTheirOwnPointOfView()
     {
         var (ann, bob, annHub, bobHub) = await NewConnectedBattleAsync();
@@ -186,21 +177,21 @@ public class HubTests : IClassFixture<FastForfeitApiFactory>
 
         var forAnn = await annHub.WaitForAsync<ShotResolvedEvent>(GameEventNames.ShotResolved);
         var forBob = await bobHub.WaitForAsync<ShotResolvedEvent>(GameEventNames.ShotResolved);
-        Assert.Equal("you", forAnn.Shooter);
-        Assert.Equal("opponent", forBob.Shooter);
-        Assert.Equal(new CoordinateDto(0, 0), forBob.Target);
-        Assert.Equal(ShotResult.Hit, forBob.Result);
-        Assert.Equal(ShotResult.Hit, forAnn.Result);
-        Assert.False(forAnn.View.YourTurn);
-        Assert.True(forBob.View.YourTurn);
-        Assert.Equal(OwnCell.Hit, forBob.View.OwnBoard.Cells[0][0]);
-        Assert.Equal(EnemyCell.Hit, forAnn.View.EnemyBoard.Cells[0][0]);
-        Assert.Equal(response.View.Version, forAnn.View.Version);
-        Assert.Equal(forAnn.View.Version, forBob.View.Version);
-        Assert.Equal(bob.Seat, forBob.View.You.Seat);
+        Assert.That(forAnn.Shooter, Is.EqualTo("you"));
+        Assert.That(forBob.Shooter, Is.EqualTo("opponent"));
+        Assert.That(forBob.Target, Is.EqualTo(new CoordinateDto(0, 0)));
+        Assert.That(forBob.Result, Is.EqualTo(ShotResult.Hit));
+        Assert.That(forAnn.Result, Is.EqualTo(ShotResult.Hit));
+        Assert.That(forAnn.View.YourTurn, Is.False);
+        Assert.That(forBob.View.YourTurn, Is.True);
+        Assert.That(forBob.View.OwnBoard.Cells[0][0], Is.EqualTo(OwnCell.Hit));
+        Assert.That(forAnn.View.EnemyBoard.Cells[0][0], Is.EqualTo(EnemyCell.Hit));
+        Assert.That(forAnn.View.Version, Is.EqualTo(response.View.Version));
+        Assert.That(forBob.View.Version, Is.EqualTo(forAnn.View.Version));
+        Assert.That(forBob.View.You.Seat, Is.EqualTo(bob.Seat));
     }
 
-    [Fact]
+    [Test]
     public async Task Fire_InvalidShot_SendsNoEvent()
     {
         var (ann, _, annHub, bobHub) = await NewConnectedBattleAsync();
@@ -210,11 +201,11 @@ public class HubTests : IClassFixture<FastForfeitApiFactory>
         await ann.FireOkAsync(50, 50);
         await Task.Delay(200);
 
-        Assert.Empty(bobHub.All<ShotResolvedEvent>(GameEventNames.ShotResolved));
-        Assert.Empty(annHub.All<ShotResolvedEvent>(GameEventNames.ShotResolved));
+        Assert.That(bobHub.All<ShotResolvedEvent>(GameEventNames.ShotResolved), Is.Empty);
+        Assert.That(annHub.All<ShotResolvedEvent>(GameEventNames.ShotResolved), Is.Empty);
     }
 
-    [Fact]
+    [Test]
     public async Task Events_NeverCarryATokenOrTheOpponentsShips()
     {
         var (ann, bob, annHub, bobHub) = await NewConnectedBattleAsync();
@@ -226,18 +217,18 @@ public class HubTests : IClassFixture<FastForfeitApiFactory>
 
         foreach (var (hub, other) in new[] { (annHub, bob), (bobHub, ann) })
         {
-            Assert.NotEmpty(hub.Received);
+            Assert.That(hub.Received, Is.Not.Empty);
             foreach (var (_, payload) in hub.Received)
             {
                 var json = payload.GetRawText();
-                Assert.DoesNotContain(other.Token, json);
-                Assert.DoesNotContain("playerToken", json, StringComparison.OrdinalIgnoreCase);
-                Assert.DoesNotContain("Ship\"", payload.GetProperty("view").GetProperty("enemyBoard").GetRawText());
+                Assert.That(json, Does.Not.Contain(other.Token));
+                Assert.That(json, Does.Not.Contain("playerToken").IgnoreCase);
+                Assert.That(payload.GetProperty("view").GetProperty("enemyBoard").GetRawText(), Does.Not.Contain("Ship\""));
             }
         }
     }
 
-    [Fact]
+    [Test]
     public async Task FullGame_SendsGameEndedToBothAndEachGetsTheirOwnVerdict()
     {
         var (ann, bob, annHub, bobHub) = await NewConnectedBattleAsync();
@@ -257,15 +248,15 @@ public class HubTests : IClassFixture<FastForfeitApiFactory>
 
         var forAnn = await annHub.WaitForAsync<GameEndedEvent>(GameEventNames.GameEnded);
         var forBob = await bobHub.WaitForAsync<GameEndedEvent>(GameEventNames.GameEnded);
-        Assert.Equal("you", forAnn.Winner);
-        Assert.Equal("opponent", forBob.Winner);
-        Assert.Equal(GamePhase.Finished, forBob.View.Phase);
-        Assert.Equal("opponent", forBob.View.Winner);
-        Assert.Null(forAnn.View.EndReason);
-        Assert.Single(annHub.All<GameEndedEvent>(GameEventNames.GameEnded));
+        Assert.That(forAnn.Winner, Is.EqualTo("you"));
+        Assert.That(forBob.Winner, Is.EqualTo("opponent"));
+        Assert.That(forBob.View.Phase, Is.EqualTo(GamePhase.Finished));
+        Assert.That(forBob.View.Winner, Is.EqualTo("opponent"));
+        Assert.That(forAnn.View.EndReason, Is.Null);
+        Assert.That(annHub.All<GameEndedEvent>(GameEventNames.GameEnded), Has.Exactly(1).Items);
     }
 
-    [Fact]
+    [Test]
     public async Task Disconnect_DuringABattleForLongerThanTheTimeout_GivesTheOtherPlayerTheWin()
     {
         var (ann, bob, annHub, bobHub) = await NewConnectedBattleAsync();
@@ -274,18 +265,37 @@ public class HubTests : IClassFixture<FastForfeitApiFactory>
 
         var ended = await annHub.WaitForAsync<GameEndedEvent>(GameEventNames.GameEnded);
 
-        Assert.Equal("you", ended.Winner);
-        Assert.Equal("Forfeit", ended.View.EndReason);
+        Assert.That(ended.Winner, Is.EqualTo("you"));
+        Assert.That(ended.View.EndReason, Is.EqualTo("Forfeit"));
         var annView = await ann.ViewAsync();
         var bobView = await bob.ViewAsync();
-        Assert.Equal(GamePhase.Finished, annView.Phase);
-        Assert.Equal("you", annView.Winner);
-        Assert.Equal("opponent", bobView.Winner);
-        Assert.Equal("Forfeit", bobView.EndReason);
+        Assert.That(annView.Phase, Is.EqualTo(GamePhase.Finished));
+        Assert.That(annView.Winner, Is.EqualTo("you"));
+        Assert.That(bobView.Winner, Is.EqualTo("opponent"));
+        Assert.That(bobView.EndReason, Is.EqualTo("Forfeit"));
         await GameClient.AssertProblemAsync(await ann.FireAsync(0, 0), 409);
     }
 
-    [Fact]
+    [Test]
+    public async Task Disconnect_ForfeitLogLine_DoesNotCarryTheRequestThatStartedTheTimer()
+    {
+        var (ann, _, annHub, bobHub) = await NewConnectedBattleAsync();
+        await using var _ = annHub;
+        await bobHub.StopAsync();
+        await annHub.WaitForAsync<GameEndedEvent>(GameEventNames.GameEnded);
+
+        var entries = Factory.Logs.ForGame(ann.Code);
+        var forfeit = entries.Single(entry => entry.EventName == LogEvents.PlayerForfeited);
+
+        Assert.That(forfeit.Properties.Keys, Does.Not.Contain("RequestId"));
+        Assert.That(forfeit.Properties.Keys, Does.Not.Contain("RequestPath"));
+        Assert.That(forfeit.TraceId, Is.Null);
+        var joined = entries.First(entry => entry.EventName == LogEvents.PlayerJoined);
+        Assert.That(joined.Properties.Keys, Does.Contain("RequestPath"));
+        Assert.That(joined.TraceId, Is.Not.Null);
+    }
+
+    [Test]
     public async Task Disconnect_ReturningBeforeTheTimeout_KeepsTheGameGoing()
     {
         var (ann, bob, annHub, bobHub) = await NewConnectedBattleAsync();
@@ -293,30 +303,30 @@ public class HubTests : IClassFixture<FastForfeitApiFactory>
         await bobHub.StopAsync();
         await annHub.WaitForAsync<OpponentConnectionEvent>(GameEventNames.OpponentConnection, e => !e.Connected);
 
-        await using var returned = await HubClient.ConnectAsync(_factory, bob);
+        await using var returned = await HubClient.ConnectAsync(Factory, bob);
         await Task.Delay(700);
 
-        Assert.Empty(annHub.All<GameEndedEvent>(GameEventNames.GameEnded));
+        Assert.That(annHub.All<GameEndedEvent>(GameEventNames.GameEnded), Is.Empty);
         var view = await ann.ViewAsync();
-        Assert.Equal(GamePhase.InProgress, view.Phase);
-        Assert.True(view.Opponent!.Connected);
+        Assert.That(view.Phase, Is.EqualTo(GamePhase.InProgress));
+        Assert.That(view.Opponent!.Connected, Is.True);
     }
 
-    [Fact]
+    [Test]
     public async Task Disconnect_WhileStillPlacingShips_DoesNotForfeit()
     {
         var (ann, bob) = await NewRoomAsync();
-        await using var annHub = await HubClient.ConnectAsync(_factory, ann);
-        var bobHub = await HubClient.ConnectAsync(_factory, bob);
+        await using var annHub = await HubClient.ConnectAsync(Factory, ann);
+        var bobHub = await HubClient.ConnectAsync(Factory, bob);
         await bobHub.StopAsync();
 
         await Task.Delay(700);
 
-        Assert.Equal(GamePhase.Placing, (await ann.ViewAsync()).Phase);
-        Assert.Empty(annHub.All<GameEndedEvent>(GameEventNames.GameEnded));
+        Assert.That((await ann.ViewAsync()).Phase, Is.EqualTo(GamePhase.Placing));
+        Assert.That(annHub.All<GameEndedEvent>(GameEventNames.GameEnded), Is.Empty);
     }
 
-    [Fact]
+    [Test]
     public async Task Reconnect_AfterMissingShots_TheViewFromRestHoldsEverythingTheClientMissed()
     {
         var (ann, bob, annHub, bobHub) = await NewConnectedBattleAsync();
@@ -326,7 +336,7 @@ public class HubTests : IClassFixture<FastForfeitApiFactory>
 
         var view = await bob.ViewAsync();
 
-        Assert.Equal(OwnCell.Hit, view.OwnBoard.Cells[0][0]);
-        Assert.True(view.YourTurn);
+        Assert.That(view.OwnBoard.Cells[0][0], Is.EqualTo(OwnCell.Hit));
+        Assert.That(view.YourTurn, Is.True);
     }
 }

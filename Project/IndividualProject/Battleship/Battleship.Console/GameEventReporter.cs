@@ -1,5 +1,5 @@
 using Battleship.Core;
-using Microsoft.Extensions.Logging;
+using Serilog;
 using Spectre.Console;
 
 namespace Battleship.ConsoleApp;
@@ -7,14 +7,14 @@ namespace Battleship.ConsoleApp;
 public class GameEventReporter
 {
     private readonly ConsoleScreen _screen;
-    private readonly ILogger<GameEventReporter> _logger;
+    private readonly ILogger _logger;
 
-    public GameEventReporter(ConsoleScreen screen, ILogger<GameEventReporter> logger)
+    public GameEventReporter(ConsoleScreen screen, ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(screen);
         ArgumentNullException.ThrowIfNull(logger);
         _screen = screen;
-        _logger = logger;
+        _logger = logger.ForContext<GameEventReporter>();
     }
 
     public void Attach(GameController controller)
@@ -28,13 +28,13 @@ public class GameEventReporter
     {
         var cell = CoordinateFormat.Format(target);
         _screen.WriteLine($"[bold]{Markup.Escape(shooter.Name)}[/] fires at [yellow]{cell}[/]: {Describe(result)}");
-        _logger.LogInformation("{Shooter} fired at {Target}: {Result}", shooter.Name, cell, result);
+        _logger.Information("{Shooter} fired at {Target}: {Result}", shooter.Name, cell, result);
     }
 
     private void HandleGameEnded(IPlayer winner)
     {
         _screen.Write(new Panel(new Markup($"[bold green]{Markup.Escape(winner.Name)}[/] wins the game!")).Border(BoxBorder.Double));
-        _logger.LogInformation("{Winner} won the game", winner.Name);
+        _logger.Information("{Winner} won the game", winner.Name);
     }
 
     private static string Describe(ShotResult result)

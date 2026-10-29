@@ -4,64 +4,63 @@ using Battleship.Core;
 
 public class ShipTests
 {
-    [Theory]
-    [InlineData(ShipType.Carrier, 5)]
-    [InlineData(ShipType.Battleship, 4)]
-    [InlineData(ShipType.Cruiser, 3)]
-    [InlineData(ShipType.Submarine, 3)]
-    [InlineData(ShipType.Destroyer, 2)]
+    [TestCase(ShipType.Carrier, 5)]
+    [TestCase(ShipType.Battleship, 4)]
+    [TestCase(ShipType.Cruiser, 3)]
+    [TestCase(ShipType.Submarine, 3)]
+    [TestCase(ShipType.Destroyer, 2)]
     public void Constructor_ShipType_SetsLengthFromType(ShipType type, int expectedLength)
     {
         var ship = new Ship(type);
 
-        Assert.Equal(type, ship.Type);
-        Assert.Equal(expectedLength, ship.Length);
+        Assert.That(ship.Type, Is.EqualTo(type));
+        Assert.That(ship.Length, Is.EqualTo(expectedLength));
     }
 
-    [Fact]
+    [Test]
     public void Constructor_UnknownShipType_Throws()
     {
         Assert.Throws<ArgumentOutOfRangeException>(() => new Ship((ShipType)99));
     }
 
-    [Fact]
+    [Test]
     public void Constructor_NewShip_HasNoPositionsAndNoHits()
     {
         var ship = new Ship(ShipType.Cruiser);
 
-        Assert.Empty(ship.Positions);
-        Assert.Equal(0, ship.HitCount);
+        Assert.That(ship.Positions, Is.Empty);
+        Assert.That(ship.HitCount, Is.EqualTo(0));
     }
 
-    [Fact]
+    [Test]
     public void IsSunk_NoHits_ReturnsFalse()
     {
         var ship = new Ship(ShipType.Destroyer);
 
-        Assert.False(ship.IsSunk);
+        Assert.That(ship.IsSunk, Is.False);
     }
 
-    [Fact]
+    [Test]
     public void IsSunk_HitCountBelowLength_ReturnsFalse()
     {
         var ship = new Ship(ShipType.Destroyer) { HitCount = 1 };
 
-        Assert.False(ship.IsSunk);
+        Assert.That(ship.IsSunk, Is.False);
     }
 
-    [Fact]
+    [Test]
     public void IsSunk_HitCountEqualsLength_ReturnsTrue()
     {
         var ship = new Ship(ShipType.Destroyer) { HitCount = 2 };
 
-        Assert.True(ship.IsSunk);
+        Assert.That(ship.IsSunk, Is.True);
     }
 
-    [Fact]
+    [Test]
     public void IsSunk_HitCountExceedsLength_ReturnsTrue()
     {
         var ship = new Ship(ShipType.Destroyer) { HitCount = 3 };
 
-        Assert.True(ship.IsSunk);
+        Assert.That(ship.IsSunk, Is.True);
     }
 }

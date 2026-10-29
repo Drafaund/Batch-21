@@ -2,20 +2,11 @@ using Battleship.Core;
 
 namespace Battleship.Api.Tests;
 
-public class FireTests : IClassFixture<ApiFactory>
+public class FireTests : ApiTestFixture<ApiFactory>
 {
-    private readonly ApiFactory _factory;
-    private readonly HttpClient _http;
-
-    public FireTests(ApiFactory factory)
-    {
-        _factory = factory;
-        _http = factory.CreateClient();
-    }
-
     private async Task<GameClient> StartedGameAsync(string opponent = "Random")
     {
-        var game = await GameClient.CreateAsync(_http, "Ann", opponent);
+        var game = await GameClient.CreateAsync(Http, "Ann", opponent);
         await game.PlaceFleetAsync();
         return game;
     }
@@ -24,20 +15,20 @@ public class FireTests : IClassFixture<ApiFactory>
 
     private static int CountOwnShots(GameView view) => view.OwnBoard.Cells.Sum(row => row.Count(cell => cell is OwnCell.Hit or OwnCell.Miss));
 
-    [Fact]
+    [Test]
     public async Task Fire_BeforeAnyShipIsPlaced_Returns409()
     {
-        var game = await GameClient.CreateAsync(_http);
+        var game = await GameClient.CreateAsync(Http);
 
         var response = await game.FireAsync(0, 0);
 
         await GameClient.AssertProblemAsync(response, 409);
     }
 
-    [Fact]
+    [Test]
     public async Task Fire_WhileStillPlacing_Returns409()
     {
-        var game = await GameClient.CreateAsync(_http);
+        var game = await GameClient.CreateAsync(Http);
         await game.PlaceShipAsync(ShipType.Carrier, 0, 0, Orientation.Horizontal);
 
         var response = await game.FireAsync(0, 0);
@@ -45,36 +36,37 @@ public class FireTests : IClassFixture<ApiFactory>
         await GameClient.AssertProblemAsync(response, 409);
     }
 
-    [Fact]
+    [Test]
     public async Task Fire_ValidShot_ResultIsHitOrMissAndTheEnemyBoardShowsIt()
     {
         var game = await StartedGameAsync();
 
         var shot = await game.FireOkAsync(3, 3);
 
-        Assert.Contains(shot.Result, new[] { ShotResult.Hit, ShotResult.Miss });
+        Assert.That(new[] { ShotResult.Hit, ShotResult.Miss }, Does.Contain(shot.Result));
         var expected = shot.Result == ShotResult.Hit ? EnemyCell.Hit : EnemyCell.Miss;
-        Assert.Equal(expected, shot.View.EnemyBoard.Cells[3][3]);
-        Assert.Equal(1, CountEnemy(shot.View, expected));
-        Assert.Equal(1, CountEnemy(shot.View, EnemyCell.Hit) + CountEnemy(shot.View, EnemyCell.Miss));
+        Assert.That(shot.View.EnemyBoard.Cells[3][3], Is.EqualTo(expected));
+        Assert.That(CountEnemy(shot.View, expected), Is.EqualTo(1));
+        Assert.That(CountEnemy(shot.View, EnemyCell.Hit) + CountEnemy(shot.View, EnemyCell.Miss), Is.EqualTo(1));
     }
 
-    [Fact]
+    [Test]
     public async Task Fire_ValidShot_BotRepliesWithExactlyOneShotAndTheTurnComesBack()
     {
         var game = await StartedGameAsync();
 
         var shot = await game.FireOkAsync(0, 0);
 
-        var reply = Assert.Single(shot.BotShots);
-        Assert.Contains(reply.Result, new[] { ShotResult.Hit, ShotResult.Miss });
-        Assert.True(shot.View.YourTurn);
-        Assert.Equal(1, CountOwnShots(shot.View));
+        Assert.That(shot.BotShots, Has.Exactly(1).Items);
+        var reply = shot.BotShots.Single();
+        Assert.That(new[] { ShotResult.Hit, ShotResult.Miss }, Does.Contain(reply.Result));
+        Assert.That(shot.View.YourTurn, Is.True);
+        Assert.That(CountOwnShots(shot.View), Is.EqualTo(1));
         var mark = shot.View.OwnBoard.Cells[reply.Target.Y][reply.Target.X];
-        Assert.Equal(reply.Result == ShotResult.Hit ? OwnCell.Hit : OwnCell.Miss, mark);
+        Assert.That(mark, Is.EqualTo(reply.Result == ShotResult.Hit ? OwnCell.Hit : OwnCell.Miss));
     }
 
-    [Fact]
+    [Test]
     public async Task Fire_ValidShot_IncreasesTheVersionByOne()
     {
         var game = await StartedGameAsync();
@@ -82,10 +74,10 @@ public class FireTests : IClassFixture<ApiFactory>
 
         var shot = await game.FireOkAsync(0, 0);
 
-        Assert.Equal(before.Version + 1, shot.View.Version);
+        Assert.That(shot.View.Version, Is.EqualTo(before.Version + 1));
     }
 
-    [Fact]
+    [Test]
     public async Task Fire_TwoValidShots_EachGetsOneBotReplyWithoutRepeatingCells()
     {
         var game = await StartedGameAsync("HuntTarget");
@@ -94,17 +86,16 @@ public class FireTests : IClassFixture<ApiFactory>
         var second = await game.FireOkAsync(1, 0);
 
         var replies = first.BotShots.Concat(second.BotShots).Select(s => s.Target).ToList();
-        Assert.Equal(2, replies.Count);
-        Assert.Equal(2, replies.Distinct().Count());
-        Assert.Equal(2, CountOwnShots(second.View));
+        Assert.That(replies.Count, Is.EqualTo(2));
+        Assert.That(replies.Distinct().Count(), Is.EqualTo(2));
+        Assert.That(CountOwnShots(second.View), Is.EqualTo(2));
     }
 
-    [Theory]
-    [InlineData(-1, 0)]
-    [InlineData(0, -1)]
-    [InlineData(10, 0)]
-    [InlineData(0, 10)]
-    [InlineData(99, 99)]
+    [TestCase(-1, 0)]
+    [TestCase(0, -1)]
+    [TestCase(10, 0)]
+    [TestCase(0, 10)]
+    [TestCase(99, 99)]
     public async Task Fire_OutsideTheBoard_ReturnsInvalidWithoutABotReplyAndKeepsTheTurn(int x, int y)
     {
         var game = await StartedGameAsync();
@@ -112,15 +103,15 @@ public class FireTests : IClassFixture<ApiFactory>
 
         var shot = await game.FireOkAsync(x, y);
 
-        Assert.Equal(ShotResult.Invalid, shot.Result);
-        Assert.Empty(shot.BotShots);
-        Assert.True(shot.View.YourTurn);
-        Assert.Equal(before.Version, shot.View.Version);
-        Assert.Equal(0, CountOwnShots(shot.View));
-        Assert.Equal(0, CountEnemy(shot.View, EnemyCell.Hit) + CountEnemy(shot.View, EnemyCell.Miss));
+        Assert.That(shot.Result, Is.EqualTo(ShotResult.Invalid));
+        Assert.That(shot.BotShots, Is.Empty);
+        Assert.That(shot.View.YourTurn, Is.True);
+        Assert.That(shot.View.Version, Is.EqualTo(before.Version));
+        Assert.That(CountOwnShots(shot.View), Is.EqualTo(0));
+        Assert.That(CountEnemy(shot.View, EnemyCell.Hit) + CountEnemy(shot.View, EnemyCell.Miss), Is.EqualTo(0));
     }
 
-    [Fact]
+    [Test]
     public async Task Fire_SameCellTwice_SecondShotIsInvalidAndTheBotDoesNotFireAgain()
     {
         var game = await StartedGameAsync();
@@ -129,14 +120,14 @@ public class FireTests : IClassFixture<ApiFactory>
 
         var second = await game.FireOkAsync(5, 5);
 
-        Assert.Equal(ShotResult.Invalid, second.Result);
-        Assert.Empty(second.BotShots);
-        Assert.True(second.View.YourTurn);
-        Assert.Equal(before.Version, second.View.Version);
-        Assert.Equal(1, CountOwnShots(second.View));
+        Assert.That(second.Result, Is.EqualTo(ShotResult.Invalid));
+        Assert.That(second.BotShots, Is.Empty);
+        Assert.That(second.View.YourTurn, Is.True);
+        Assert.That(second.View.Version, Is.EqualTo(before.Version));
+        Assert.That(CountOwnShots(second.View), Is.EqualTo(1));
     }
 
-    [Fact]
+    [Test]
     public async Task Fire_MissingTarget_Returns400()
     {
         var game = await StartedGameAsync();
@@ -146,7 +137,7 @@ public class FireTests : IClassFixture<ApiFactory>
         await GameClient.AssertProblemAsync(response, 400);
     }
 
-    [Fact]
+    [Test]
     public async Task Fire_NoBody_Returns400()
     {
         var game = await StartedGameAsync();
@@ -156,7 +147,7 @@ public class FireTests : IClassFixture<ApiFactory>
         await GameClient.AssertProblemAsync(response, 400);
     }
 
-    [Fact]
+    [Test]
     public async Task Fire_NonNumericCoordinate_Returns400()
     {
         var game = await StartedGameAsync();
@@ -166,7 +157,7 @@ public class FireTests : IClassFixture<ApiFactory>
         await GameClient.AssertProblemAsync(response, 400);
     }
 
-    [Fact]
+    [Test]
     public async Task Fire_NoToken_Returns401()
     {
         var game = await StartedGameAsync();
@@ -176,7 +167,7 @@ public class FireTests : IClassFixture<ApiFactory>
         await GameClient.AssertProblemAsync(response, 401);
     }
 
-    [Fact]
+    [Test]
     public async Task Fire_WrongToken_Returns401AndNothingIsFired()
     {
         var game = await StartedGameAsync();
@@ -184,26 +175,43 @@ public class FireTests : IClassFixture<ApiFactory>
         var response = await game.FireAsync("wrong", 0, 0);
 
         await GameClient.AssertProblemAsync(response, 401);
-        Assert.Equal(0, CountOwnShots(await game.ViewAsync()));
+        Assert.That(CountOwnShots(await game.ViewAsync()), Is.EqualTo(0));
     }
 
-    [Fact]
+    [Test]
     public async Task Fire_UnknownCode_Returns404()
     {
-        var response = await GameClient.SendAsync(_http, HttpMethod.Post, "/api/games/ZZZZZ/shots", "any", new { target = new { x = 0, y = 0 } });
+        var response = await GameClient.SendAsync(Http, HttpMethod.Post, "/api/games/ZZZZZ/shots", "any", new { target = new { x = 0, y = 0 } });
 
         await GameClient.AssertProblemAsync(response, 404);
     }
 
-    [Fact]
+    [Test]
+    public async Task Fire_ShotLogs_CarryTheRequestIdAndPathOfTheRequestThatFiredThem()
+    {
+        var game = await StartedGameAsync();
+
+        await game.FireOkAsync(2, 4);
+
+        var shot = Factory.Logs.ForGame(game.Code).First(entry => entry.EventName == LogEvents.ShotFired);
+        Assert.That(shot.Properties["RequestPath"], Is.EqualTo($"/api/games/{game.Code}/shots"));
+        Assert.That(shot.Properties["RequestId"], Is.Not.Null.And.Not.Empty);
+    }
+
+    [Test]
     public async Task Fire_ShotsAreWrittenToTheLog()
     {
         var game = await StartedGameAsync();
 
         await game.FireOkAsync(2, 4);
 
-        var messages = _factory.Logs.Messages;
-        Assert.Contains(messages, m => m.Contains($"Game {game.Code}") && m.Contains("Ann fired at (2, 4)"));
-        Assert.Contains(messages, m => m.Contains($"Game {game.Code}") && m.Contains("Bot Random fired at"));
+        var shots = Factory.Logs.ForGame(game.Code)
+            .Where(entry => entry.EventName == LogEvents.ShotFired)
+            .Select(entry => (Player: (string?)entry.Properties["PlayerName"], Target: (IReadOnlyDictionary<string, object?>)entry.Properties["Target"]!))
+            .ToList();
+        var annShot = shots.Single(shot => shot.Player == "Ann");
+        Assert.That(annShot.Target["X"], Is.EqualTo(2));
+        Assert.That(annShot.Target["Y"], Is.EqualTo(4));
+        Assert.That(shots.Select(shot => shot.Player), Does.Contain("Bot Random"));
     }
 }

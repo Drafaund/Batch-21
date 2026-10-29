@@ -1,5 +1,5 @@
 using Battleship.Core;
-using Microsoft.Extensions.Logging.Abstractions;
+using Serilog.Core;
 
 namespace Battleship.Api.Tests;
 
@@ -7,10 +7,10 @@ public class GameInternalsTests
 {
     private static GameSessionFactory NewFactory()
     {
-        return new GameSessionFactory(() => new Random(1), NullLoggerFactory.Instance, new RecordingSink(), new GameOptions());
+        return new GameSessionFactory(() => new Random(1), Logger.None, new RecordingSink(), new GameOptions());
     }
 
-    [Fact]
+    [Test]
     public void OnlinePlayer_SelectTarget_Throws()
     {
         var player = new OnlinePlayer(1, "Ann", new Board(), new Fleet());
@@ -18,17 +18,15 @@ public class GameInternalsTests
         Assert.Throws<InvalidOperationException>(() => player.SelectTarget());
     }
 
-    [Fact]
+    [Test]
     public void OnlinePlayer_ReceiveResult_DoesNothing()
     {
         var player = new OnlinePlayer(1, "Ann", new Board(), new Fleet());
 
-        var exception = Record.Exception(() => player.ReceiveResult(new Coordinate(0, 0), ShotResult.Hit));
-
-        Assert.Null(exception);
+        Assert.DoesNotThrow(() => player.ReceiveResult(new Coordinate(0, 0), ShotResult.Hit));
     }
 
-    [Fact]
+    [Test]
     public void OnlinePlayer_IsAPlayerWithIdentityBoardAndFleet()
     {
         var board = new Board();
@@ -36,14 +34,14 @@ public class GameInternalsTests
 
         var player = new OnlinePlayer(1, "Ann", board, fleet);
 
-        Assert.IsAssignableFrom<IPlayer>(player);
-        Assert.IsAssignableFrom<IShotStrategy>(player);
-        Assert.Equal("Ann", player.Name);
-        Assert.Same(board, player.Board);
-        Assert.Same(fleet, player.Fleet);
+        Assert.That(player, Is.AssignableTo<IPlayer>());
+        Assert.That(player, Is.AssignableTo<IShotStrategy>());
+        Assert.That(player.Name, Is.EqualTo("Ann"));
+        Assert.That(player.Board, Is.SameAs(board));
+        Assert.That(player.Fleet, Is.SameAs(fleet));
     }
 
-    [Fact]
+    [Test]
     public void GameSessionFactory_HumanOpponent_StartsInTheLobbyWithNothingPlaced()
     {
         var factory = NewFactory();
@@ -51,12 +49,12 @@ public class GameInternalsTests
         var session = factory.Create("ABCDE", "token", "Ann", OpponentKind.Human);
 
         var view = session.GetView(1);
-        Assert.Equal(GamePhase.Lobby, view.Phase);
-        Assert.Null(view.Opponent);
-        Assert.Empty(view.OwnShips);
+        Assert.That(view.Phase, Is.EqualTo(GamePhase.Lobby));
+        Assert.That(view.Opponent, Is.Null);
+        Assert.That(view.OwnShips, Is.Empty);
     }
 
-    [Fact]
+    [Test]
     public void GameSessionFactory_BotOpponent_PlacesTheBotFleetSoOnlyThePlayerHasToPlace()
     {
         var factory = NewFactory();
@@ -64,15 +62,15 @@ public class GameInternalsTests
         var session = factory.Create("ABCDE", "token", "Ann", OpponentKind.HuntTarget);
 
         var view = session.GetView(1);
-        Assert.Equal(5, view.EnemyShipsRemaining);
-        Assert.Empty(view.OwnShips);
+        Assert.That(view.EnemyShipsRemaining, Is.EqualTo(5));
+        Assert.That(view.OwnShips, Is.Empty);
     }
 
-    [Fact]
+    [Test]
     public void GameSession_GameAgainstABot_SendsNoEvents()
     {
         var sink = new RecordingSink();
-        var factory = new GameSessionFactory(() => new Random(1), NullLoggerFactory.Instance, sink, new GameOptions());
+        var factory = new GameSessionFactory(() => new Random(1), Logger.None, sink, new GameOptions());
         var session = factory.Create("ABCDE", "secret", "Ann", OpponentKind.Random);
 
         session.PlaceShipsRandomly(1);
@@ -80,46 +78,46 @@ public class GameInternalsTests
         session.Connect(1);
         session.Disconnect(1);
 
-        Assert.Empty(sink.Events);
+        Assert.That(sink.Events, Is.Empty);
     }
 
-    [Fact]
+    [Test]
     public void GameSession_FindSeat_OnlyAcceptsTheExactToken()
     {
         var factory = NewFactory();
         var session = factory.Create("ABCDE", "secret", "Ann", OpponentKind.Random);
 
-        Assert.Equal(1, session.FindSeat("secret"));
-        Assert.Null(session.FindSeat("Secret"));
-        Assert.Null(session.FindSeat("secre"));
-        Assert.Null(session.FindSeat("secret "));
-        Assert.Null(session.FindSeat(""));
-        Assert.Null(session.FindSeat(null));
+        Assert.That(session.FindSeat("secret"), Is.EqualTo(1));
+        Assert.That(session.FindSeat("Secret"), Is.Null);
+        Assert.That(session.FindSeat("secre"), Is.Null);
+        Assert.That(session.FindSeat("secret "), Is.Null);
+        Assert.That(session.FindSeat(""), Is.Null);
+        Assert.That(session.FindSeat(null), Is.Null);
     }
 
-    [Fact]
+    [Test]
     public void GameStore_CreateAndFind_ReturnsTheSameSessionForAnyLetterCase()
     {
         var store = new GameStore(NewFactory());
 
         var session = store.Create("Ann", OpponentKind.Random);
 
-        Assert.Same(session, store.Find(session.Code.ToLowerInvariant()).Value);
-        Assert.Equal(1, store.Count);
+        Assert.That(store.Find(session.Code.ToLowerInvariant()).Value, Is.SameAs(session));
+        Assert.That(store.Count, Is.EqualTo(1));
     }
 
-    [Fact]
+    [Test]
     public void GameStore_Find_UnknownCode_FailsWithNotFound()
     {
         var store = new GameStore(NewFactory());
 
         var result = store.Find("ZZZZZ");
 
-        Assert.True(result.IsFailure);
-        Assert.Equal(ErrorType.NotFound, result.Error.Type);
+        Assert.That(result.IsFailure, Is.True);
+        Assert.That(result.Error.Type, Is.EqualTo(ErrorType.NotFound));
     }
 
-    [Fact]
+    [Test]
     public void GameStore_GetAuthorized_WrongToken_FailsWithUnauthorized()
     {
         var store = new GameStore(NewFactory());
@@ -127,11 +125,11 @@ public class GameInternalsTests
 
         var result = store.GetAuthorized(session.Code, "wrong");
 
-        Assert.True(result.IsFailure);
-        Assert.Equal(ErrorType.Unauthorized, result.Error.Type);
+        Assert.That(result.IsFailure, Is.True);
+        Assert.That(result.Error.Type, Is.EqualTo(ErrorType.Unauthorized));
     }
 
-    [Fact]
+    [Test]
     public void GameStore_GetAuthorized_RightToken_ReturnsTheSessionAndSeat()
     {
         var store = new GameStore(NewFactory());
@@ -139,74 +137,72 @@ public class GameInternalsTests
 
         var result = store.GetAuthorized(session.Code, session.PlayerToken);
 
-        Assert.True(result.IsSuccess);
-        Assert.Same(session, result.Value.Session);
-        Assert.Equal(1, result.Value.Seat);
+        Assert.That(result.IsSuccess, Is.True);
+        Assert.That(result.Value.Session, Is.SameAs(session));
+        Assert.That(result.Value.Seat, Is.EqualTo(1));
     }
 
-    [Fact]
+    [Test]
     public void GameSession_Fire_BeforeShipsArePlaced_FailsWithConflict()
     {
         var session = NewFactory().Create("ABCDE", "secret", "Ann", OpponentKind.Random);
 
         var result = session.Fire(1, new Coordinate(0, 0));
 
-        Assert.True(result.IsFailure);
-        Assert.Equal(ErrorType.Conflict, result.Error.Type);
+        Assert.That(result.IsFailure, Is.True);
+        Assert.That(result.Error.Type, Is.EqualTo(ErrorType.Conflict));
     }
 
-    [Fact]
+    [Test]
     public void GameSession_Join_BotGame_FailsWithConflict()
     {
         var session = NewFactory().Create("ABCDE", "secret", "Ann", OpponentKind.Random);
 
         var result = session.Join("Bob", "other");
 
-        Assert.True(result.IsFailure);
-        Assert.Equal(ErrorType.Conflict, result.Error.Type);
+        Assert.That(result.IsFailure, Is.True);
+        Assert.That(result.Error.Type, Is.EqualTo(ErrorType.Conflict));
     }
 
-    [Fact]
+    [Test]
     public void GameSession_SendEmote_BotGame_FailsWithConflict()
     {
         var session = NewFactory().Create("ABCDE", "secret", "Ann", OpponentKind.Random);
 
         var result = session.SendEmote(1, "gg");
 
-        Assert.True(result.IsFailure);
-        Assert.Equal(ErrorType.Conflict, result.Error.Type);
+        Assert.That(result.IsFailure, Is.True);
+        Assert.That(result.Error.Type, Is.EqualTo(ErrorType.Conflict));
     }
 
-    [Fact]
+    [Test]
     public void GameStore_Create_ManyGamesInParallel_AllGetDifferentCodes()
     {
         var store = new GameStore(NewFactory());
 
         var sessions = Enumerable.Range(0, 200).AsParallel().Select(_ => store.Create("Ann", OpponentKind.Random)).ToList();
 
-        Assert.Equal(200, sessions.Select(s => s.Code).Distinct().Count());
-        Assert.Equal(200, store.Count);
+        Assert.That(sessions.Select(s => s.Code).Distinct().Count(), Is.EqualTo(200));
+        Assert.That(store.Count, Is.EqualTo(200));
     }
 
-    [Theory]
-    [InlineData("Ann")]
-    [InlineData(" Ann ")]
-    [InlineData("a")]
+    [TestCase("Ann")]
+    [TestCase(" Ann ")]
+    [TestCase("a")]
     public void PlayerNameValidator_GoodNames_AreTrimmedAndAccepted(string name)
     {
-        Assert.Equal(name.Trim(), PlayerNameValidator.Validate(name).Value);
+        Assert.That(PlayerNameValidator.Validate(name).Value, Is.EqualTo(name.Trim()));
     }
 
-    [Theory]
-    [InlineData(null)]
-    [InlineData("   ")]
-    [InlineData("a name that is far too long")]
-    [InlineData("bad\nname")]
+    [TestCase(null)]
+    [TestCase("   ")]
+    [TestCase("a name that is far too long")]
+    [TestCase("bad\nname")]
     public void PlayerNameValidator_BadNames_FailWithValidation(string? name)
     {
         var result = PlayerNameValidator.Validate(name);
 
-        Assert.True(result.IsFailure);
-        Assert.Equal(ErrorType.Validation, result.Error.Type);
+        Assert.That(result.IsFailure, Is.True);
+        Assert.That(result.Error.Type, Is.EqualTo(ErrorType.Validation));
     }
 }

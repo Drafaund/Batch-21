@@ -2,37 +2,30 @@ using System.Text.Json;
 
 namespace Battleship.Api.Tests;
 
-public class PrivacyTests : IClassFixture<ApiFactory>
+public class PrivacyTests : ApiTestFixture<ApiFactory>
 {
-    private readonly HttpClient _http;
-
-    public PrivacyTests(ApiFactory factory)
-    {
-        _http = factory.CreateClient();
-    }
-
-    [Fact]
+    [Test]
     public void EnemyCell_CannotDescribeAShip()
     {
         var names = Enum.GetNames<EnemyCell>();
 
-        Assert.Equal(new[] { "Unknown", "Hit", "Miss", "Sunk" }, names);
+        Assert.That(names, Is.EqualTo(new[] { "Unknown", "Hit", "Miss", "Sunk" }));
     }
 
-    [Fact]
+    [Test]
     public async Task EnemyBoard_RightAfterCreation_IsCompletelyUnknownEvenThoughTheBotAlreadyPlacedItsShips()
     {
-        var game = await GameClient.CreateAsync(_http);
+        var game = await GameClient.CreateAsync(Http);
 
         var view = await game.ViewAsync();
 
-        Assert.All(view.EnemyBoard.Cells, row => Assert.All(row, cell => Assert.Equal(EnemyCell.Unknown, cell)));
+        Assert.That(view.EnemyBoard.Cells.SelectMany(row => row), Is.All.EqualTo(EnemyCell.Unknown));
     }
 
-    [Fact]
+    [Test]
     public async Task EnemyBoard_AfterShots_ShowsOnlyTheCellsTheFirerShotAt()
     {
-        var game = await GameClient.CreateAsync(_http);
+        var game = await GameClient.CreateAsync(Http);
         await game.PlaceFleetAsync();
         var fired = new HashSet<(int X, int Y)>();
         GameView view = await game.ViewAsync();
@@ -54,15 +47,15 @@ public class PrivacyTests : IClassFixture<ApiFactory>
             for (var x = 0; x < 10; x++)
             {
                 var shown = view.EnemyBoard.Cells[y][x] != EnemyCell.Unknown;
-                Assert.Equal(fired.Contains((x, y)), shown);
+                Assert.That(shown, Is.EqualTo(fired.Contains((x, y))));
             }
         }
     }
 
-    [Fact]
+    [Test]
     public async Task EnemyBoard_Json_ContainsNoShipValueAndOnlyTheFourKnownCellNames()
     {
-        var game = await GameClient.CreateAsync(_http);
+        var game = await GameClient.CreateAsync(Http);
         await game.PlaceFleetAsync();
         await game.FireOkAsync(0, 0);
         await game.FireOkAsync(1, 0);
@@ -75,58 +68,56 @@ public class PrivacyTests : IClassFixture<ApiFactory>
             .Select(cell => cell.GetString())
             .Distinct()
             .ToList();
-        Assert.All(enemyCells, name => Assert.Contains(name, new[] { "Unknown", "Hit", "Miss", "Sunk" }));
-        Assert.DoesNotContain("Ship", enemyCells);
-        Assert.DoesNotContain("Water", enemyCells);
+        Assert.That(enemyCells, Is.All.AnyOf("Unknown", "Hit", "Miss", "Sunk"));
+        Assert.That(enemyCells, Does.Not.Contain("Ship"));
+        Assert.That(enemyCells, Does.Not.Contain("Water"));
     }
 
-    [Fact]
+    [Test]
     public async Task GameView_Json_HasNoEnemyShipListOrPositions()
     {
-        var game = await GameClient.CreateAsync(_http);
+        var game = await GameClient.CreateAsync(Http);
         await game.PlaceFleetAsync();
 
         using var document = JsonDocument.Parse(await (await game.GetAsync()).Content.ReadAsStringAsync());
 
         var names = document.RootElement.EnumerateObject().Select(p => p.Name).ToList();
-        Assert.Equal(
-            new[]
+        Assert.That(names, Is.EqualTo(new[]
             {
                 "code", "version", "phase", "you", "opponent", "yourTurn", "winner",
                 "placement", "ownBoard", "ownShips", "enemyBoard", "enemyShipsRemaining", "endReason", "turnSecondsRemaining",
-            },
-            names);
-        Assert.Equal(JsonValueKind.Number, document.RootElement.GetProperty("enemyShipsRemaining").ValueKind);
+            }));
+        Assert.That(document.RootElement.GetProperty("enemyShipsRemaining").ValueKind, Is.EqualTo(JsonValueKind.Number));
         var enemyBoardNames = document.RootElement.GetProperty("enemyBoard").EnumerateObject().Select(p => p.Name).ToList();
-        Assert.Equal(new[] { "size", "cells" }, enemyBoardNames);
+        Assert.That(enemyBoardNames, Is.EqualTo(new[] { "size", "cells" }));
     }
 
-    [Fact]
+    [Test]
     public async Task ShotResponse_Json_DescribesOnlyTheShotAndTheViewAndTheBotReplies()
     {
-        var game = await GameClient.CreateAsync(_http);
+        var game = await GameClient.CreateAsync(Http);
         await game.PlaceFleetAsync();
 
         var response = await game.FireAsync(0, 0);
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
 
         var names = document.RootElement.EnumerateObject().Select(p => p.Name).ToList();
-        Assert.Equal(new[] { "result", "botShots", "view" }, names);
+        Assert.That(names, Is.EqualTo(new[] { "result", "botShots", "view" }));
     }
 
-    [Fact]
+    [Test]
     public async Task EnemyShipsRemaining_IsOnlyACountThatFallsWhenAShipSinks()
     {
-        var game = await GameClient.CreateAsync(_http);
+        var game = await GameClient.CreateAsync(Http);
         await game.PlaceFleetAsync();
         var remaining = (await game.ViewAsync()).EnemyShipsRemaining;
-        Assert.Equal(5, remaining);
+        Assert.That(remaining, Is.EqualTo(5));
 
         var lowest = remaining;
         for (var i = 0; i < 100; i++)
         {
             var shot = await game.FireOkAsync(i % 10, i / 10);
-            Assert.True(shot.View.EnemyShipsRemaining <= lowest);
+            Assert.That(shot.View.EnemyShipsRemaining <= lowest, Is.True);
             lowest = shot.View.EnemyShipsRemaining;
             if (shot.View.Phase == GamePhase.Finished)
             {

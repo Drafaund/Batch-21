@@ -10,7 +10,7 @@ public sealed class GameSession
     private readonly Random _random;
     private readonly IGameEventSink _sink;
     private readonly GameOptions _options;
-    private readonly ILogger<GameSession> _logger;
+    private readonly ILogger _logger;
     private readonly List<ShotRecord> _shots = new();
     private IPlayer? _winner;
     private string? _endReason;
@@ -27,7 +27,7 @@ public sealed class GameSession
         Random random,
         IGameEventSink sink,
         GameOptions options,
-        ILogger<GameSession> logger)
+        ILogger logger)
     {
         Code = code;
         _controller = controller;
@@ -35,7 +35,7 @@ public sealed class GameSession
         _random = random;
         _sink = sink;
         _options = options;
-        _logger = logger;
+        _logger = logger.ForContext<GameSession>().ForContext(LogEvents.GameCodeProperty, code);
 
         _controller.OnShotResolved += HandleShotResolved;
         _controller.OnGameEnded += HandleGameEnded;
@@ -81,7 +81,7 @@ public sealed class GameSession
 
             guest.Take(playerName, token);
             _version++;
-            _logger.LogInformation("Game {Code}: {Name} joined", Code, playerName);
+            _logger.Event(LogEvents.PlayerJoined).Information("{PlayerName} joined", playerName);
             events.Add(new SeatEvent(1, GameEventNames.PlayerJoined, new PlayerJoinedEvent(playerName, BuildView(1))));
             return new JoinGameResponse(token, 2, BuildView(2));
         });
@@ -225,7 +225,7 @@ public sealed class GameSession
             if (_controller.GetState() == GameState.InProgress)
             {
                 current.StopDropTimer();
-                current.DropTimer = new Timer(_ => Forfeit(current), null, _options.OpponentTimeout, Timeout.InfiniteTimeSpan);
+                current.DropTimer = StartTimer(_ => Forfeit(current), _options.OpponentTimeout);
             }
         });
     }
@@ -241,7 +241,7 @@ public sealed class GameSession
 
             var winner = OtherSeat(absent).Player;
             _endReason = GameEndReasons.Forfeit;
-            _logger.LogInformation("Game {Code}: {Name} stayed away and forfeits", Code, absent.Player.Name);
+            _logger.Event(LogEvents.PlayerForfeited).Information("{PlayerName} stayed away and forfeits", absent.Player.Name);
             _controller.EndGame(winner);
             _version++;
             AddEndEvent(events);
@@ -276,7 +276,16 @@ public sealed class GameSession
         var turn = ++_turnId;
         var slow = _seats.First(seat => ReferenceEquals(seat.Player, _controller.GetCurrentPlayer()));
         _turnDeadline = DateTime.UtcNow + _options.TurnTimeout;
-        _turnTimer = new Timer(_ => TurnExpired(turn, slow), null, _options.TurnTimeout, Timeout.InfiniteTimeSpan);
+        _turnTimer = StartTimer(_ => TurnExpired(turn, slow), _options.TurnTimeout);
+    }
+
+    private static Timer StartTimer(TimerCallback callback, TimeSpan dueTime)
+    {
+        // A timer callback would otherwise run with the request context (scope, trace) of whoever started it.
+        using (ExecutionContext.SuppressFlow())
+        {
+            return new Timer(callback, null, dueTime, Timeout.InfiniteTimeSpan);
+        }
     }
 
     private void StopTurnClock()
@@ -297,7 +306,7 @@ public sealed class GameSession
             }
 
             _endReason = GameEndReasons.Timeout;
-            _logger.LogInformation("Game {Code}: {Name} did not fire in time and loses", Code, slow.Player.Name);
+            _logger.Event(LogEvents.TurnTimedOut).Information("{PlayerName} did not fire in time and loses", slow.Player.Name);
             _controller.EndGame(OtherSeat(slow).Player);
             _version++;
             AddEndEvent(events);
@@ -441,12 +450,12 @@ public sealed class GameSession
     private void HandleShotResolved(IPlayer shooter, Coordinate target, ShotResult result)
     {
         _shots.Add(new ShotRecord(shooter, target, result));
-        _logger.LogInformation("Game {Code}: {Shooter} fired at ({X}, {Y}): {Result}", Code, shooter.Name, target.X, target.Y, result);
+        _logger.Event(LogEvents.ShotFired).Information("{PlayerName} fired at {@Target}: {Result}", shooter.Name, target, result);
     }
 
     private void HandleGameEnded(IPlayer winner)
     {
         _winner = winner;
-        _logger.LogInformation("Game {Code}: {Winner} won", Code, winner.Name);
+        _logger.Event(LogEvents.GameWon).Information("{PlayerName} won", winner.Name);
     }
 }

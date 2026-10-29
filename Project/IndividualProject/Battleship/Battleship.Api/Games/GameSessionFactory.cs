@@ -5,14 +5,14 @@ namespace Battleship.Api;
 public sealed class GameSessionFactory
 {
     private readonly Func<Random> _randomFactory;
-    private readonly ILoggerFactory _loggerFactory;
+    private readonly ILogger _logger;
     private readonly IGameEventSink _sink;
     private readonly GameOptions _options;
 
-    public GameSessionFactory(Func<Random> randomFactory, ILoggerFactory loggerFactory, IGameEventSink sink, GameOptions options)
+    public GameSessionFactory(Func<Random> randomFactory, ILogger logger, IGameEventSink sink, GameOptions options)
     {
         _randomFactory = randomFactory;
-        _loggerFactory = loggerFactory;
+        _logger = logger;
         _sink = sink;
         _options = options;
     }
@@ -59,6 +59,6 @@ public sealed class GameSessionFactory
             random,
             _sink,
             _options,
-            _loggerFactory.CreateLogger<GameSession>());
+            _logger);
     }
 }

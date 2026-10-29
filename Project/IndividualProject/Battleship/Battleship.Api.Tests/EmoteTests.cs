@@ -18,27 +18,18 @@ public sealed class FastEmoteApiFactory : ApiFactory
     }
 }
 
-public class EmoteTests : IClassFixture<FastEmoteApiFactory>
+public class EmoteTests : ApiTestFixture<FastEmoteApiFactory>
 {
-    private readonly FastEmoteApiFactory _factory;
-    private readonly HttpClient _http;
-
-    public EmoteTests(FastEmoteApiFactory factory)
-    {
-        _factory = factory;
-        _http = factory.CreateClient();
-    }
-
     private async Task<(GameClient Ann, GameClient Bob, HubClient AnnHub, HubClient BobHub)> NewConnectedRoomAsync()
     {
-        var ann = await GameClient.CreateRoomAsync(_http, "Ann");
-        var bob = await GameClient.JoinAsync(_http, ann.Code, "Bob");
-        var annHub = await HubClient.ConnectAsync(_factory, ann);
-        var bobHub = await HubClient.ConnectAsync(_factory, bob);
+        var ann = await GameClient.CreateRoomAsync(Http, "Ann");
+        var bob = await GameClient.JoinAsync(Http, ann.Code, "Bob");
+        var annHub = await HubClient.ConnectAsync(Factory, ann);
+        var bobHub = await HubClient.ConnectAsync(Factory, bob);
         return (ann, bob, annHub, bobHub);
     }
 
-    [Fact]
+    [Test]
     public async Task Send_KnownEmote_TellsOnlyTheOpponent()
     {
         var (ann, _, annHub, bobHub) = await NewConnectedRoomAsync();
@@ -47,14 +38,14 @@ public class EmoteTests : IClassFixture<FastEmoteApiFactory>
 
         var response = await ann.EmoteAsync("thumbsUp");
 
-        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
         var received = await bobHub.WaitForAsync<EmoteReceivedEvent>(GameEventNames.EmoteReceived);
-        Assert.Equal("thumbsUp", received.Emote);
+        Assert.That(received.Emote, Is.EqualTo("thumbsUp"));
         await Task.Delay(200);
-        Assert.Empty(annHub.All<EmoteReceivedEvent>(GameEventNames.EmoteReceived));
+        Assert.That(annHub.All<EmoteReceivedEvent>(GameEventNames.EmoteReceived), Is.Empty);
     }
 
-    [Fact]
+    [Test]
     public async Task Send_TheOtherWayAround_ReachesTheFirstPlayer()
     {
         var (_, bob, annHub, bobHub) = await NewConnectedRoomAsync();
@@ -64,10 +55,10 @@ public class EmoteTests : IClassFixture<FastEmoteApiFactory>
         await bob.EmoteAsync("laugh");
 
         var received = await annHub.WaitForAsync<EmoteReceivedEvent>(GameEventNames.EmoteReceived);
-        Assert.Equal("laugh", received.Emote);
+        Assert.That(received.Emote, Is.EqualTo("laugh"));
     }
 
-    [Fact]
+    [Test]
     public async Task Send_DuringABattle_IsAllowedAndDoesNotChangeTheGame()
     {
         var (ann, bob, annHub, bobHub) = await NewConnectedRoomAsync();
@@ -79,13 +70,13 @@ public class EmoteTests : IClassFixture<FastEmoteApiFactory>
 
         var response = await bob.EmoteAsync("wow");
 
-        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
         var after = await ann.ViewAsync();
-        Assert.Equal(before.Version, after.Version);
-        Assert.Equal(before.YourTurn, after.YourTurn);
+        Assert.That(after.Version, Is.EqualTo(before.Version));
+        Assert.That(after.YourTurn, Is.EqualTo(before.YourTurn));
     }
 
-    [Fact]
+    [Test]
     public async Task Send_UnknownEmote_Gives400()
     {
         var (ann, _, annHub, bobHub) = await NewConnectedRoomAsync();
@@ -97,7 +88,7 @@ public class EmoteTests : IClassFixture<FastEmoteApiFactory>
         await GameClient.AssertProblemAsync(await ann.EmoteAsync(null), 400);
     }
 
-    [Fact]
+    [Test]
     public async Task Send_WithoutABody_Gives400()
     {
         var (ann, _, annHub, bobHub) = await NewConnectedRoomAsync();
@@ -107,7 +98,7 @@ public class EmoteTests : IClassFixture<FastEmoteApiFactory>
         await GameClient.AssertProblemAsync(await ann.PostRawAsync("emotes", null), 400);
     }
 
-    [Fact]
+    [Test]
     public async Task Send_WithoutOrWithAWrongToken_Gives401()
     {
         var (ann, _, annHub, bobHub) = await NewConnectedRoomAsync();
@@ -118,47 +109,47 @@ public class EmoteTests : IClassFixture<FastEmoteApiFactory>
         await GameClient.AssertProblemAsync(await ann.EmoteAsync("wrong-token", "thumbsUp"), 401);
     }
 
-    [Fact]
+    [Test]
     public async Task Send_AgainstABot_Gives409()
     {
-        var ann = await GameClient.CreateAsync(_http, "Ann", "Random");
+        var ann = await GameClient.CreateAsync(Http, "Ann", "Random");
 
         await GameClient.AssertProblemAsync(await ann.EmoteAsync("thumbsUp"), 409);
     }
 
-    [Fact]
+    [Test]
     public async Task Send_BeforeTheOpponentHasJoined_Gives409()
     {
-        var ann = await GameClient.CreateRoomAsync(_http, "Ann");
+        var ann = await GameClient.CreateRoomAsync(Http, "Ann");
 
         await GameClient.AssertProblemAsync(await ann.EmoteAsync("thumbsUp"), 409);
     }
 
-    [Fact]
+    [Test]
     public async Task Send_UnknownGame_Gives404()
     {
-        var response = await GameClient.SendAsync(_http, HttpMethod.Post, "/api/games/ZZZZZ/emotes", "any-token", new { emote = "thumbsUp" });
+        var response = await GameClient.SendAsync(Http, HttpMethod.Post, "/api/games/ZZZZZ/emotes", "any-token", new { emote = "thumbsUp" });
 
         await GameClient.AssertProblemAsync(response, 404);
     }
 
-    [Fact]
+    [Test]
     public async Task Send_TwiceInARow_Gives429ThenWorksAfterTheCooldown()
     {
         var (ann, _, annHub, bobHub) = await NewConnectedRoomAsync();
         await using var _ = annHub;
         await using var __ = bobHub;
-        Assert.Equal(HttpStatusCode.NoContent, (await ann.EmoteAsync("clap")).StatusCode);
+        Assert.That((await ann.EmoteAsync("clap")).StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
 
         await GameClient.AssertProblemAsync(await ann.EmoteAsync("clap"), 429);
         await Task.Delay(400);
 
-        Assert.Equal(HttpStatusCode.NoContent, (await ann.EmoteAsync("clap")).StatusCode);
+        Assert.That((await ann.EmoteAsync("clap")).StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
         await Task.Delay(200);
-        Assert.Equal(2, bobHub.All<EmoteReceivedEvent>(GameEventNames.EmoteReceived).Count());
+        Assert.That(bobHub.All<EmoteReceivedEvent>(GameEventNames.EmoteReceived).Count(), Is.EqualTo(2));
     }
 
-    [Fact]
+    [Test]
     public async Task Send_TheCooldownBelongsToTheSeat_SoTheOpponentCanAnswerAtOnce()
     {
         var (ann, bob, annHub, bobHub) = await NewConnectedRoomAsync();
@@ -168,10 +159,10 @@ public class EmoteTests : IClassFixture<FastEmoteApiFactory>
 
         var response = await bob.EmoteAsync("wave");
 
-        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
     }
 
-    [Fact]
+    [Test]
     public async Task Send_RefusedEmote_ReachesNobody()
     {
         var (ann, _, annHub, bobHub) = await NewConnectedRoomAsync();
@@ -181,10 +172,10 @@ public class EmoteTests : IClassFixture<FastEmoteApiFactory>
         await ann.EmoteAsync("not-an-emote");
         await Task.Delay(200);
 
-        Assert.Empty(bobHub.All<EmoteReceivedEvent>(GameEventNames.EmoteReceived));
+        Assert.That(bobHub.All<EmoteReceivedEvent>(GameEventNames.EmoteReceived), Is.Empty);
     }
 
-    [Fact]
+    [Test]
     public async Task Event_CarriesOnlyTheEmote_NoViewAndNoToken()
     {
         var (ann, bob, annHub, bobHub) = await NewConnectedRoomAsync();
@@ -196,20 +187,20 @@ public class EmoteTests : IClassFixture<FastEmoteApiFactory>
 
         var payload = bobHub.Received.Single(e => e.Name == GameEventNames.EmoteReceived).Payload;
         var json = payload.GetRawText();
-        Assert.DoesNotContain(ann.Token, json);
-        Assert.DoesNotContain(bob.Token, json);
-        Assert.False(payload.TryGetProperty("view", out var view), $"unexpected view: {view}");
-        Assert.Single(payload.EnumerateObject());
+        Assert.That(json, Does.Not.Contain(ann.Token));
+        Assert.That(json, Does.Not.Contain(bob.Token));
+        Assert.That(payload.TryGetProperty("view", out var view), Is.False, $"unexpected view: {view}");
+        Assert.That(payload.EnumerateObject(), Has.Exactly(1).Items);
     }
 
-    [Fact]
+    [Test]
     public void EmoteCatalog_HoldsTheCodesTheFrontEndKnows()
     {
         string[] expected = { "thumbsUp", "laugh", "wow", "angry", "target", "wave", "handshake", "clap" };
 
-        Assert.Equal(expected.OrderBy(code => code), EmoteCatalog.Codes.OrderBy(code => code));
-        Assert.True(EmoteCatalog.IsKnown("clap"));
-        Assert.False(EmoteCatalog.IsKnown("Clap"));
-        Assert.False(EmoteCatalog.IsKnown(null));
+        Assert.That(EmoteCatalog.Codes.OrderBy(code => code), Is.EqualTo(expected.OrderBy(code => code)));
+        Assert.That(EmoteCatalog.IsKnown("clap"), Is.True);
+        Assert.That(EmoteCatalog.IsKnown("Clap"), Is.False);
+        Assert.That(EmoteCatalog.IsKnown(null), Is.False);
     }
 }

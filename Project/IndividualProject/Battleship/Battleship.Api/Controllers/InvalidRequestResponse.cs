@@ -9,8 +9,7 @@ internal static class InvalidRequestResponse
     public static IActionResult Create(ActionContext context)
     {
         var http = context.HttpContext;
-        var logger = http.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("Battleship.Api.Errors");
-        logger.LogInformation("{Method} {Path} rejected with {Status}: {Detail}", http.Request.Method, http.Request.Path, StatusCodes.Status400BadRequest, Detail);
+        http.LogRejected(StatusCodes.Status400BadRequest, Detail);
 
         var problem = new ValidationProblemDetails(context.ModelState)
         {

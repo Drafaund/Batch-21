@@ -34,7 +34,7 @@ public class TestGame
         foreach (var type in AllTypes)
         {
             var placed = Controller.PlaceShip(player, new Ship(type), new Coordinate(0, RowOf(type)), Orientation.Horizontal);
-            Assert.True(placed, $"Fixture failed to place {type}.");
+            Assert.That(placed, Is.True, $"Fixture failed to place {type}.");
         }
     }
 

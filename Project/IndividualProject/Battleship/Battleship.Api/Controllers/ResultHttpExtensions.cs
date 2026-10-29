@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Serilog.Core;
 
 namespace Battleship.Api;
 
@@ -35,11 +36,18 @@ internal static class ResultHttpExtensions
         return Results.Problem(error.ToProblemDetails(http));
     }
 
+    public static void LogRejected(this HttpContext http, int status, string? detail)
+    {
+        http.RequestServices.GetRequiredService<ILogger>()
+            .ForContext(Constants.SourceContextPropertyName, "Battleship.Api.Errors")
+            .Event(LogEvents.RequestRejected)
+            .Information("Request rejected with {StatusCode}: {Detail}", status, detail);
+    }
+
     private static ProblemDetails ToProblemDetails(this Error error, HttpContext http)
     {
         var (status, title) = Describe(error.Type);
-        var logger = http.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("Battleship.Api.Errors");
-        logger.LogInformation("{Method} {Path} rejected with {Status}: {Detail}", http.Request.Method, http.Request.Path, status, error.Detail);
+        http.LogRejected(status, error.Detail);
         return new ProblemDetails { Status = status, Title = title, Detail = error.Detail };
     }
 

@@ -4,33 +4,33 @@ using Battleship.Core;
 
 public class GameControllerBasicsTests
 {
-    [Fact]
+    [Test]
     public void Constructor_NewGame_StateIsSetup()
     {
         var game = new TestGame();
 
-        Assert.Equal(GameState.Setup, game.Controller.GetState());
-        Assert.Equal(GameState.Setup, game.Controller.State);
+        Assert.That(game.Controller.GetState(), Is.EqualTo(GameState.Setup));
+        Assert.That(game.Controller.State, Is.EqualTo(GameState.Setup));
     }
 
-    [Fact]
+    [Test]
     public void Constructor_NewGame_FirstPlayerIsCurrent()
     {
         var game = new TestGame();
 
-        Assert.Same(game.Player1, game.Controller.GetCurrentPlayer());
+        Assert.That(game.Controller.GetCurrentPlayer(), Is.SameAs(game.Player1));
     }
 
-    [Fact]
+    [Test]
     public void Constructor_NewGame_ExposesBothPlayers()
     {
         var game = new TestGame();
 
-        Assert.Same(game.Player1, game.Controller.Player1);
-        Assert.Same(game.Player2, game.Controller.Player2);
+        Assert.That(game.Controller.Player1, Is.SameAs(game.Player1));
+        Assert.That(game.Controller.Player2, Is.SameAs(game.Player2));
     }
 
-    [Fact]
+    [Test]
     public void Constructor_NullArguments_Throw()
     {
         var p1 = new FakePlayer(1, "One");
@@ -43,7 +43,7 @@ public class GameControllerBasicsTests
         Assert.Throws<ArgumentNullException>(() => new GameController(p1, s, p2, null!));
     }
 
-    [Fact]
+    [Test]
     public void Constructor_SamePlayerTwice_Throws()
     {
         var p = new FakePlayer(1, "One");
@@ -52,38 +52,38 @@ public class GameControllerBasicsTests
         Assert.Throws<ArgumentException>(() => new GameController(p, s, p, s));
     }
 
-    [Fact]
+    [Test]
     public void GetBoard_EachPlayer_ReturnsThatPlayersBoard()
     {
         var game = new TestGame();
 
-        Assert.Same(game.Player1.Board, game.Controller.GetBoard(game.Player1));
-        Assert.Same(game.Player2.Board, game.Controller.GetBoard(game.Player2));
+        Assert.That(game.Controller.GetBoard(game.Player1), Is.SameAs(game.Player1.Board));
+        Assert.That(game.Controller.GetBoard(game.Player2), Is.SameAs(game.Player2.Board));
     }
 
-    [Fact]
+    [Test]
     public void GetFleet_EachPlayer_ReturnsThatPlayersFleet()
     {
         var game = new TestGame();
 
-        Assert.Same(game.Player1.Fleet, game.Controller.GetFleet(game.Player1));
-        Assert.Same(game.Player2.Fleet, game.Controller.GetFleet(game.Player2));
+        Assert.That(game.Controller.GetFleet(game.Player1), Is.SameAs(game.Player1.Fleet));
+        Assert.That(game.Controller.GetFleet(game.Player2), Is.SameAs(game.Player2.Fleet));
     }
 
-    [Fact]
+    [Test]
     public void BoardAndFleetDictionaries_AfterConstruction_HoldEachPlayersBoardAndFleet()
     {
         var game = new TestGame();
 
-        Assert.Equal(2, game.Controller.Board.Count);
-        Assert.Equal(2, game.Controller.Fleet.Count);
-        Assert.Same(game.Player1.Board, game.Controller.Board[game.Player1]);
-        Assert.Same(game.Player2.Board, game.Controller.Board[game.Player2]);
-        Assert.Same(game.Player1.Fleet, game.Controller.Fleet[game.Player1]);
-        Assert.Same(game.Player2.Fleet, game.Controller.Fleet[game.Player2]);
+        Assert.That(game.Controller.Board.Count, Is.EqualTo(2));
+        Assert.That(game.Controller.Fleet.Count, Is.EqualTo(2));
+        Assert.That(game.Controller.Board[game.Player1], Is.SameAs(game.Player1.Board));
+        Assert.That(game.Controller.Board[game.Player2], Is.SameAs(game.Player2.Board));
+        Assert.That(game.Controller.Fleet[game.Player1], Is.SameAs(game.Player1.Fleet));
+        Assert.That(game.Controller.Fleet[game.Player2], Is.SameAs(game.Player2.Fleet));
     }
 
-    [Fact]
+    [Test]
     public void GetBoardAndGetFleet_PlayerNotInGame_Throw()
     {
         var game = new TestGame();
@@ -93,15 +93,15 @@ public class GameControllerBasicsTests
         Assert.Throws<ArgumentException>(() => game.Controller.GetFleet(stranger));
     }
 
-    [Fact]
+    [Test]
     public void SwitchTurn_Called_AlternatesCurrentPlayer()
     {
         var game = new TestGame();
 
         game.Controller.SwitchTurn();
-        Assert.Same(game.Player2, game.Controller.GetCurrentPlayer());
+        Assert.That(game.Controller.GetCurrentPlayer(), Is.SameAs(game.Player2));
 
         game.Controller.SwitchTurn();
-        Assert.Same(game.Player1, game.Controller.GetCurrentPlayer());
+        Assert.That(game.Controller.GetCurrentPlayer(), Is.SameAs(game.Player1));
     }
 }

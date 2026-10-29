@@ -3,19 +3,12 @@ using Battleship.Core;
 
 namespace Battleship.Api.Tests;
 
-public class SunkCellTests : IClassFixture<ApiFactory>
+public class SunkCellTests : ApiTestFixture<ApiFactory>
 {
-    private readonly HttpClient _http;
-
-    public SunkCellTests(ApiFactory factory)
-    {
-        _http = factory.CreateClient();
-    }
-
     private async Task<(GameClient Ann, GameClient Bob)> NewBattleAsync()
     {
-        var ann = await GameClient.CreateRoomAsync(_http, "Ann");
-        var bob = await GameClient.JoinAsync(_http, ann.Code, "Bob");
+        var ann = await GameClient.CreateRoomAsync(Http, "Ann");
+        var bob = await GameClient.JoinAsync(Http, ann.Code, "Bob");
         await ann.PlaceFleetAsync();
         await bob.PlaceFleetAsync();
         return (ann, bob);
@@ -35,47 +28,47 @@ public class SunkCellTests : IClassFixture<ApiFactory>
         return last!;
     }
 
-    [Fact]
+    [Test]
     public async Task EnemyBoard_ShipHitButNotSunk_ShowsHit()
     {
         var (ann, bob) = await NewBattleAsync();
 
         var shot = await AnnFiresAsync(ann, bob, (0, 4));
 
-        Assert.Equal(ShotResult.Hit, shot.Result);
-        Assert.Equal(EnemyCell.Hit, shot.View.EnemyBoard.Cells[4][0]);
-        Assert.Equal(0, CountEnemy(shot.View, EnemyCell.Sunk));
+        Assert.That(shot.Result, Is.EqualTo(ShotResult.Hit));
+        Assert.That(shot.View.EnemyBoard.Cells[4][0], Is.EqualTo(EnemyCell.Hit));
+        Assert.That(CountEnemy(shot.View, EnemyCell.Sunk), Is.EqualTo(0));
     }
 
-    [Fact]
+    [Test]
     public async Task EnemyBoard_ShipThatSinks_ShowsEveryCellOfThatShipAsSunk()
     {
         var (ann, bob) = await NewBattleAsync();
 
         var shot = await AnnFiresAsync(ann, bob, (0, 4), (1, 4));
 
-        Assert.Equal(ShotResult.Sunk, shot.Result);
-        Assert.Equal(EnemyCell.Sunk, shot.View.EnemyBoard.Cells[4][0]);
-        Assert.Equal(EnemyCell.Sunk, shot.View.EnemyBoard.Cells[4][1]);
-        Assert.Equal(2, CountEnemy(shot.View, EnemyCell.Sunk));
-        Assert.Equal(0, CountEnemy(shot.View, EnemyCell.Hit));
+        Assert.That(shot.Result, Is.EqualTo(ShotResult.Sunk));
+        Assert.That(shot.View.EnemyBoard.Cells[4][0], Is.EqualTo(EnemyCell.Sunk));
+        Assert.That(shot.View.EnemyBoard.Cells[4][1], Is.EqualTo(EnemyCell.Sunk));
+        Assert.That(CountEnemy(shot.View, EnemyCell.Sunk), Is.EqualTo(2));
+        Assert.That(CountEnemy(shot.View, EnemyCell.Hit), Is.EqualTo(0));
     }
 
-    [Fact]
+    [Test]
     public async Task EnemyBoard_ShipThatSinks_LeavesOtherShipsHitAndEverythingElseUnknown()
     {
         var (ann, bob) = await NewBattleAsync();
 
         var shot = await AnnFiresAsync(ann, bob, (0, 0), (0, 4), (1, 4));
 
-        Assert.Equal(EnemyCell.Hit, shot.View.EnemyBoard.Cells[0][0]);
-        Assert.Equal(1, CountEnemy(shot.View, EnemyCell.Hit));
-        Assert.Equal(2, CountEnemy(shot.View, EnemyCell.Sunk));
-        Assert.Equal(97, CountEnemy(shot.View, EnemyCell.Unknown));
-        Assert.Equal(EnemyCell.Unknown, shot.View.EnemyBoard.Cells[4][2]);
+        Assert.That(shot.View.EnemyBoard.Cells[0][0], Is.EqualTo(EnemyCell.Hit));
+        Assert.That(CountEnemy(shot.View, EnemyCell.Hit), Is.EqualTo(1));
+        Assert.That(CountEnemy(shot.View, EnemyCell.Sunk), Is.EqualTo(2));
+        Assert.That(CountEnemy(shot.View, EnemyCell.Unknown), Is.EqualTo(97));
+        Assert.That(shot.View.EnemyBoard.Cells[4][2], Is.EqualTo(EnemyCell.Unknown));
     }
 
-    [Fact]
+    [Test]
     public async Task EnemyBoard_AfterTheSinking_StaysSunkWhenTheViewIsLoadedAgain()
     {
         var (ann, bob) = await NewBattleAsync();
@@ -83,11 +76,11 @@ public class SunkCellTests : IClassFixture<ApiFactory>
 
         var view = await ann.ViewAsync();
 
-        Assert.Equal(EnemyCell.Sunk, view.EnemyBoard.Cells[4][0]);
-        Assert.Equal(EnemyCell.Sunk, view.EnemyBoard.Cells[4][1]);
+        Assert.That(view.EnemyBoard.Cells[4][0], Is.EqualTo(EnemyCell.Sunk));
+        Assert.That(view.EnemyBoard.Cells[4][1], Is.EqualTo(EnemyCell.Sunk));
     }
 
-    [Fact]
+    [Test]
     public async Task EnemyBoard_OfTheOtherPlayer_IsNotAffected()
     {
         var (ann, bob) = await NewBattleAsync();
@@ -95,11 +88,11 @@ public class SunkCellTests : IClassFixture<ApiFactory>
 
         var bobView = await bob.ViewAsync();
 
-        Assert.Equal(0, CountEnemy(bobView, EnemyCell.Sunk));
-        Assert.Equal(0, CountEnemy(bobView, EnemyCell.Hit));
+        Assert.That(CountEnemy(bobView, EnemyCell.Sunk), Is.EqualTo(0));
+        Assert.That(CountEnemy(bobView, EnemyCell.Hit), Is.EqualTo(0));
     }
 
-    [Fact]
+    [Test]
     public async Task OwnBoard_OfTheVictim_KeepsHitCellsAndReportsTheSinkingInOwnShips()
     {
         var (ann, bob) = await NewBattleAsync();
@@ -107,13 +100,13 @@ public class SunkCellTests : IClassFixture<ApiFactory>
 
         var view = await bob.ViewAsync();
 
-        Assert.Equal(OwnCell.Hit, view.OwnBoard.Cells[4][0]);
-        Assert.Equal(OwnCell.Hit, view.OwnBoard.Cells[4][1]);
-        var destroyer = Assert.Single(view.OwnShips, ship => ship.Type == ShipType.Destroyer);
-        Assert.True(destroyer.IsSunk);
+        Assert.That(view.OwnBoard.Cells[4][0], Is.EqualTo(OwnCell.Hit));
+        Assert.That(view.OwnBoard.Cells[4][1], Is.EqualTo(OwnCell.Hit));
+        var destroyer = view.OwnShips.Single(ship => ship.Type == ShipType.Destroyer);
+        Assert.That(destroyer.IsSunk, Is.True);
     }
 
-    [Fact]
+    [Test]
     public async Task EnemyBoard_Json_AfterASinking_UsesOnlyTheFourKnownCellNames()
     {
         var (ann, bob) = await NewBattleAsync();
@@ -127,9 +120,9 @@ public class SunkCellTests : IClassFixture<ApiFactory>
             .Select(cell => cell.GetString())
             .Distinct()
             .ToList();
-        Assert.All(names, name => Assert.Contains(name, new[] { "Unknown", "Hit", "Miss", "Sunk" }));
-        Assert.Contains("Sunk", names);
-        Assert.DoesNotContain("Ship", names);
+        Assert.That(names, Is.All.AnyOf("Unknown", "Hit", "Miss", "Sunk"));
+        Assert.That(names, Does.Contain("Sunk"));
+        Assert.That(names, Does.Not.Contain("Ship"));
     }
 
     private static int CountEnemy(GameView view, EnemyCell kind) => view.EnemyBoard.Cells.Sum(row => row.Count(cell => cell == kind));

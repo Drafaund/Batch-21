@@ -19,47 +19,46 @@ public class RandomAIPlayerTests
         return shots;
     }
 
-    [Fact]
+    [Test]
     public void Constructor_NullRandom_Throws()
     {
         Assert.Throws<ArgumentNullException>(() => new RandomAIPlayer(1, "Bot", new Board(), new Fleet(), null!));
     }
 
-    [Fact]
+    [Test]
     public void RandomAIPlayer_IsPlayerAndShotStrategy()
     {
         var bot = NewBot(1);
 
-        Assert.IsAssignableFrom<IPlayer>(bot);
-        Assert.IsAssignableFrom<IShotStrategy>(bot);
+        Assert.That(bot, Is.AssignableTo<IPlayer>());
+        Assert.That(bot, Is.AssignableTo<IShotStrategy>());
     }
 
-    [Theory]
-    [InlineData(1)]
-    [InlineData(42)]
-    [InlineData(2026)]
+    [TestCase(1)]
+    [TestCase(42)]
+    [TestCase(2026)]
     public void SelectTarget_HundredShots_CoversWholeBoardWithoutRepeats(int seed)
     {
         var bot = NewBot(seed);
 
         var shots = FireAll(bot, 100);
 
-        Assert.Equal(100, shots.Distinct().Count());
-        Assert.All(shots, c => Assert.InRange(c.X, 0, 9));
-        Assert.All(shots, c => Assert.InRange(c.Y, 0, 9));
+        Assert.That(shots.Distinct().Count(), Is.EqualTo(100));
+        Assert.That(shots.Select(c => c.X), Is.All.InRange(0, 9));
+        Assert.That(shots.Select(c => c.Y), Is.All.InRange(0, 9));
     }
 
-    [Fact]
+    [Test]
     public void SelectTarget_NoResultReported_StillNeverRepeats()
     {
         var bot = NewBot(5);
 
         var shots = Enumerable.Range(0, 100).Select(_ => bot.SelectTarget()).ToList();
 
-        Assert.Equal(100, shots.Distinct().Count());
+        Assert.That(shots.Distinct().Count(), Is.EqualTo(100));
     }
 
-    [Fact]
+    [Test]
     public void SelectTarget_AfterWholeBoardFired_Throws()
     {
         var bot = NewBot(3);
@@ -68,25 +67,25 @@ public class RandomAIPlayerTests
         Assert.Throws<InvalidOperationException>(() => bot.SelectTarget());
     }
 
-    [Fact]
+    [Test]
     public void SelectTarget_SameSeed_GivesSameSequence()
     {
         var first = FireAll(NewBot(77), 30);
         var second = FireAll(NewBot(77), 30);
 
-        Assert.Equal(first, second);
+        Assert.That(second, Is.EqualTo(first));
     }
 
-    [Fact]
+    [Test]
     public void SelectTarget_DifferentSeeds_GiveDifferentSequences()
     {
         var first = FireAll(NewBot(1), 30);
         var second = FireAll(NewBot(2), 30);
 
-        Assert.NotEqual(first, second);
+        Assert.That(second, Is.Not.EqualTo(first));
     }
 
-    [Fact]
+    [Test]
     public void SelectTarget_ReportedResultsDoNotChangeChoices()
     {
         var reportsMiss = NewBot(9);
@@ -105,6 +104,6 @@ public class RandomAIPlayerTests
             withHits.Add(hitTarget);
         }
 
-        Assert.Equal(withMisses, withHits);
+        Assert.That(withHits, Is.EqualTo(withMisses));
     }
 }

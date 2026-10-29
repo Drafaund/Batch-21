@@ -17,19 +17,32 @@ public sealed class FastTurnApiFactory : ApiFactory
     }
 }
 
-public class TurnTimeoutTests : IClassFixture<FastTurnApiFactory>, IClassFixture<ApiFactory>
+public class TurnTimeoutTests
 {
-    private readonly FastTurnApiFactory _fast;
-    private readonly HttpClient _fastHttp;
-    private readonly HttpClient _normalHttp;
-    private readonly ApiFactory _normalOptions;
+    private FastTurnApiFactory _fast = null!;
+    private ApiFactory _normalOptions = null!;
+    private HttpClient _fastHttp = null!;
+    private HttpClient _normalHttp = null!;
 
-    public TurnTimeoutTests(FastTurnApiFactory fast, ApiFactory normal)
+    [OneTimeSetUp]
+    public void CreateFactories()
     {
-        _fast = fast;
-        _fastHttp = fast.CreateClient();
-        _normalHttp = normal.CreateClient();
-        _normalOptions = normal;
+        _fast = new FastTurnApiFactory();
+        _normalOptions = new ApiFactory();
+    }
+
+    [OneTimeTearDown]
+    public async Task DisposeFactories()
+    {
+        await _fast.DisposeAsync();
+        await _normalOptions.DisposeAsync();
+    }
+
+    [SetUp]
+    public void CreateClients()
+    {
+        _fastHttp = _fast.CreateClient();
+        _normalHttp = _normalOptions.CreateClient();
     }
 
     private async Task<(GameClient Ann, GameClient Bob)> NewBattleAsync(HttpClient http)
@@ -58,7 +71,7 @@ public class TurnTimeoutTests : IClassFixture<FastTurnApiFactory>, IClassFixture
         throw new TimeoutException("The game did not finish.");
     }
 
-    [Fact]
+    [Test]
     public async Task Battle_PlayerToFireDoesNothing_LosesAndTheOtherPlayerWins()
     {
         var (ann, bob) = await NewBattleAsync(_fastHttp);
@@ -66,16 +79,33 @@ public class TurnTimeoutTests : IClassFixture<FastTurnApiFactory>, IClassFixture
         var annView = await WaitUntilFinishedAsync(ann);
         var bobView = await bob.ViewAsync();
 
-        Assert.Equal("opponent", annView.Winner);
-        Assert.Equal("Timeout", annView.EndReason);
-        Assert.Equal("you", bobView.Winner);
-        Assert.Equal("Timeout", bobView.EndReason);
-        Assert.False(annView.YourTurn);
-        Assert.Null(annView.TurnSecondsRemaining);
+        Assert.That(annView.Winner, Is.EqualTo("opponent"));
+        Assert.That(annView.EndReason, Is.EqualTo("Timeout"));
+        Assert.That(bobView.Winner, Is.EqualTo("you"));
+        Assert.That(bobView.EndReason, Is.EqualTo("Timeout"));
+        Assert.That(annView.YourTurn, Is.False);
+        Assert.That(annView.TurnSecondsRemaining, Is.Null);
         await GameClient.AssertProblemAsync(await ann.FireAsync(0, 0), 409);
     }
 
-    [Fact]
+    [Test]
+    public async Task Battle_TimeoutLogLine_DoesNotCarryTheRequestThatStartedTheClock()
+    {
+        var (ann, _) = await NewBattleAsync(_fastHttp);
+        await WaitUntilFinishedAsync(ann);
+
+        var entries = _fast.Logs.ForGame(ann.Code);
+        var timeout = entries.Single(entry => entry.EventName == LogEvents.TurnTimedOut);
+
+        Assert.That(timeout.Properties.Keys, Does.Not.Contain("RequestId"));
+        Assert.That(timeout.Properties.Keys, Does.Not.Contain("RequestPath"));
+        Assert.That(timeout.TraceId, Is.Null);
+        var joined = entries.First(entry => entry.EventName == LogEvents.PlayerJoined);
+        Assert.That(joined.Properties.Keys, Does.Contain("RequestPath"));
+        Assert.That(joined.TraceId, Is.Not.Null);
+    }
+
+    [Test]
     public async Task Battle_TimeoutIsSentToBothPlayersWithTheirOwnVerdict()
     {
         var ann = await GameClient.CreateRoomAsync(_fastHttp, "Ann");
@@ -88,13 +118,13 @@ public class TurnTimeoutTests : IClassFixture<FastTurnApiFactory>, IClassFixture
         var forAnn = await annHub.WaitForAsync<GameEndedEvent>(GameEventNames.GameEnded);
         var forBob = await bobHub.WaitForAsync<GameEndedEvent>(GameEventNames.GameEnded);
 
-        Assert.Equal("opponent", forAnn.Winner);
-        Assert.Equal("you", forBob.Winner);
-        Assert.Equal("Timeout", forAnn.View.EndReason);
-        Assert.Equal("Timeout", forBob.View.EndReason);
+        Assert.That(forAnn.Winner, Is.EqualTo("opponent"));
+        Assert.That(forBob.Winner, Is.EqualTo("you"));
+        Assert.That(forAnn.View.EndReason, Is.EqualTo("Timeout"));
+        Assert.That(forBob.View.EndReason, Is.EqualTo("Timeout"));
     }
 
-    [Fact]
+    [Test]
     public async Task Battle_ValidShotPassesTheClockToTheOtherPlayer()
     {
         var (ann, bob) = await NewBattleAsync(_fastHttp);
@@ -102,12 +132,12 @@ public class TurnTimeoutTests : IClassFixture<FastTurnApiFactory>, IClassFixture
         await ann.FireOkAsync(0, 0);
         var finished = await WaitUntilFinishedAsync(bob);
 
-        Assert.Equal("opponent", finished.Winner);
-        Assert.Equal("Timeout", finished.EndReason);
-        Assert.Equal("you", (await ann.ViewAsync()).Winner);
+        Assert.That(finished.Winner, Is.EqualTo("opponent"));
+        Assert.That(finished.EndReason, Is.EqualTo("Timeout"));
+        Assert.That((await ann.ViewAsync()).Winner, Is.EqualTo("you"));
     }
 
-    [Fact]
+    [Test]
     public async Task Battle_PlayersFiringInTimeKeepPlayingPastTheTimeout()
     {
         var (ann, bob) = await NewBattleAsync(_fastHttp);
@@ -121,11 +151,11 @@ public class TurnTimeoutTests : IClassFixture<FastTurnApiFactory>, IClassFixture
         }
 
         var view = await ann.ViewAsync();
-        Assert.Equal(GamePhase.InProgress, view.Phase);
-        Assert.Null(view.EndReason);
+        Assert.That(view.Phase, Is.EqualTo(GamePhase.InProgress));
+        Assert.That(view.EndReason, Is.Null);
     }
 
-    [Fact]
+    [Test]
     public async Task Battle_InvalidShotDoesNotGiveTheTurnBackItsFullTime()
     {
         var (ann, _) = await NewBattleAsync(_fastHttp);
@@ -134,11 +164,11 @@ public class TurnTimeoutTests : IClassFixture<FastTurnApiFactory>, IClassFixture
         await ann.FireOkAsync(50, 50);
         var finished = await WaitUntilFinishedAsync(ann);
 
-        Assert.Equal("Timeout", finished.EndReason);
-        Assert.Equal("opponent", finished.Winner);
+        Assert.That(finished.EndReason, Is.EqualTo("Timeout"));
+        Assert.That(finished.Winner, Is.EqualTo("opponent"));
     }
 
-    [Fact]
+    [Test]
     public async Task Timeouts_CanBeSetInConfiguration()
     {
         await using var factory = new ApiFactory().WithWebHostBuilder(builder => builder.UseSetting("Game:TurnTimeout", "00:00:00.700"));
@@ -146,19 +176,19 @@ public class TurnTimeoutTests : IClassFixture<FastTurnApiFactory>, IClassFixture
 
         var finished = await WaitUntilFinishedAsync(ann);
 
-        Assert.Equal("Timeout", finished.EndReason);
+        Assert.That(finished.EndReason, Is.EqualTo("Timeout"));
     }
 
-    [Fact]
+    [Test]
     public void Timeouts_DefaultToThirtySecondsInAppsettings()
     {
         var options = _normalOptions.Services.GetRequiredService<GameOptions>();
 
-        Assert.Equal(TimeSpan.FromSeconds(30), options.TurnTimeout);
-        Assert.Equal(TimeSpan.FromSeconds(30), options.OpponentTimeout);
+        Assert.That(options.TurnTimeout, Is.EqualTo(TimeSpan.FromSeconds(30)));
+        Assert.That(options.OpponentTimeout, Is.EqualTo(TimeSpan.FromSeconds(30)));
     }
 
-    [Fact]
+    [Test]
     public async Task Battle_ViewTellsHowManySecondsTheMoverHasLeft()
     {
         var (ann, bob) = await NewBattleAsync(_normalHttp);
@@ -166,24 +196,24 @@ public class TurnTimeoutTests : IClassFixture<FastTurnApiFactory>, IClassFixture
         var annView = await ann.ViewAsync();
         var bobView = await bob.ViewAsync();
 
-        Assert.InRange(annView.TurnSecondsRemaining!.Value, 1, 30);
-        Assert.InRange(bobView.TurnSecondsRemaining!.Value, 1, 30);
+        Assert.That(annView.TurnSecondsRemaining!.Value, Is.InRange(1, 30));
+        Assert.That(bobView.TurnSecondsRemaining!.Value, Is.InRange(1, 30));
     }
 
-    [Fact]
+    [Test]
     public async Task NoBattleYet_ViewHasNoClock()
     {
         var ann = await GameClient.CreateRoomAsync(_normalHttp, "Ann");
-        Assert.Null(ann.InitialView.TurnSecondsRemaining);
+        Assert.That(ann.InitialView.TurnSecondsRemaining, Is.Null);
 
         var bob = await GameClient.JoinAsync(_normalHttp, ann.Code, "Bob");
         await ann.PlaceFleetAsync();
 
-        Assert.Null(bob.InitialView.TurnSecondsRemaining);
-        Assert.Null((await ann.ViewAsync()).TurnSecondsRemaining);
+        Assert.That(bob.InitialView.TurnSecondsRemaining, Is.Null);
+        Assert.That((await ann.ViewAsync()).TurnSecondsRemaining, Is.Null);
     }
 
-    [Fact]
+    [Test]
     public async Task GameAgainstABot_HasNoTurnClockAndNeverTimesOut()
     {
         var game = await GameClient.CreateAsync(_fastHttp, opponent: "Random");
@@ -192,12 +222,12 @@ public class TurnTimeoutTests : IClassFixture<FastTurnApiFactory>, IClassFixture
         await Task.Delay(1200);
 
         var view = await game.ViewAsync();
-        Assert.Equal(GamePhase.InProgress, view.Phase);
-        Assert.Null(view.TurnSecondsRemaining);
-        Assert.Null(view.EndReason);
+        Assert.That(view.Phase, Is.EqualTo(GamePhase.InProgress));
+        Assert.That(view.TurnSecondsRemaining, Is.Null);
+        Assert.That(view.EndReason, Is.Null);
     }
 
-    [Fact]
+    [Test]
     public async Task Battle_FinishedByTheLastShot_LeavesNoClockRunning()
     {
         var (ann, bob) = await NewBattleAsync(_normalHttp);
@@ -214,8 +244,8 @@ public class TurnTimeoutTests : IClassFixture<FastTurnApiFactory>, IClassFixture
         }
 
         var view = await bob.ViewAsync();
-        Assert.Equal(GamePhase.Finished, view.Phase);
-        Assert.Null(view.EndReason);
-        Assert.Null(view.TurnSecondsRemaining);
+        Assert.That(view.Phase, Is.EqualTo(GamePhase.Finished));
+        Assert.That(view.EndReason, Is.Null);
+        Assert.That(view.TurnSecondsRemaining, Is.Null);
     }
 }

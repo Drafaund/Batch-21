@@ -6,7 +6,7 @@ public class HumanPlayerTests
 {
     private static HumanPlayer NewPlayer(ICoordinateInput input) => new(1, "Ann", new Board(), new Fleet(), input);
 
-    [Fact]
+    [Test]
     public void Constructor_Arguments_KeepsIdentityBoardAndFleet()
     {
         var board = new Board();
@@ -14,28 +14,28 @@ public class HumanPlayerTests
 
         var player = new HumanPlayer(7, "Ann", board, fleet, new FakeCoordinateInput());
 
-        Assert.Equal(7, player.Id);
-        Assert.Equal("Ann", player.Name);
-        Assert.Same(board, player.Board);
-        Assert.Same(fleet, player.Fleet);
+        Assert.That(player.Id, Is.EqualTo(7));
+        Assert.That(player.Name, Is.EqualTo("Ann"));
+        Assert.That(player.Board, Is.SameAs(board));
+        Assert.That(player.Fleet, Is.SameAs(fleet));
     }
 
-    [Fact]
+    [Test]
     public void Constructor_NullInput_Throws()
     {
         Assert.Throws<ArgumentNullException>(() => new HumanPlayer(1, "Ann", new Board(), new Fleet(), null!));
     }
 
-    [Fact]
+    [Test]
     public void HumanPlayer_IsPlayerAndShotStrategy()
     {
         var player = NewPlayer(new FakeCoordinateInput());
 
-        Assert.IsAssignableFrom<IPlayer>(player);
-        Assert.IsAssignableFrom<IShotStrategy>(player);
+        Assert.That(player, Is.AssignableTo<IPlayer>());
+        Assert.That(player, Is.AssignableTo<IShotStrategy>());
     }
 
-    [Fact]
+    [Test]
     public void SelectTarget_Called_ReturnsCoordinateFromInput()
     {
         var input = new FakeCoordinateInput(new Coordinate(3, 3));
@@ -43,30 +43,30 @@ public class HumanPlayerTests
 
         var target = player.SelectTarget();
 
-        Assert.Equal(new Coordinate(3, 3), target);
-        Assert.Equal(1, input.ReadCount);
+        Assert.That(target, Is.EqualTo(new Coordinate(3, 3)));
+        Assert.That(input.ReadCount, Is.EqualTo(1));
     }
 
-    [Fact]
+    [Test]
     public void SelectTarget_CalledTwice_ReadsInputEachTime()
     {
         var input = new FakeCoordinateInput(new Coordinate(0, 0), new Coordinate(9, 9));
         var player = NewPlayer(input);
 
-        Assert.Equal(new Coordinate(0, 0), player.SelectTarget());
-        Assert.Equal(new Coordinate(9, 9), player.SelectTarget());
-        Assert.Equal(2, input.ReadCount);
+        Assert.That(player.SelectTarget(), Is.EqualTo(new Coordinate(0, 0)));
+        Assert.That(player.SelectTarget(), Is.EqualTo(new Coordinate(9, 9)));
+        Assert.That(input.ReadCount, Is.EqualTo(2));
     }
 
-    [Fact]
+    [Test]
     public void SelectTarget_OutOfBoardInput_ReturnedUnchangedForControllerToReject()
     {
         var player = NewPlayer(new FakeCoordinateInput(new Coordinate(12, -3)));
 
-        Assert.Equal(new Coordinate(12, -3), player.SelectTarget());
+        Assert.That(player.SelectTarget(), Is.EqualTo(new Coordinate(12, -3)));
     }
 
-    [Fact]
+    [Test]
     public void ReceiveResult_AnyResult_DoesNotThrowAndDoesNotReadInput()
     {
         var input = new FakeCoordinateInput();
@@ -77,10 +77,10 @@ public class HumanPlayerTests
             player.ReceiveResult(new Coordinate(1, 1), result);
         }
 
-        Assert.Equal(0, input.ReadCount);
+        Assert.That(input.ReadCount, Is.EqualTo(0));
     }
 
-    [Fact]
+    [Test]
     public void HumanPlayer_InGame_ShotComesFromInputAndIsResolvedByController()
     {
         var human = new HumanPlayer(1, "Ann", new Board(), new Fleet(), new FakeCoordinateInput(new Coordinate(0, 0)));
@@ -94,7 +94,7 @@ public class HumanPlayerTests
 
         controller.StartGame();
 
-        Assert.Equal(ShotResult.Hit, controller.TakeTurn());
-        Assert.Equal(CellState.Hit, other.Board.Cells[0, 0].State);
+        Assert.That(controller.TakeTurn(), Is.EqualTo(ShotResult.Hit));
+        Assert.That(other.Board.Cells[0, 0].State, Is.EqualTo(CellState.Hit));
     }
 }

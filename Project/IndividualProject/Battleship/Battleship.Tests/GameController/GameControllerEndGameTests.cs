@@ -12,23 +12,23 @@ public class GameControllerEndGameTests
         }
     }
 
-    [Fact]
+    [Test]
     public void CheckWinner_DuringSetup_ReturnsNull()
     {
         var game = new TestGame();
 
-        Assert.Null(game.Controller.CheckWinner());
+        Assert.That(game.Controller.CheckWinner(), Is.Null);
     }
 
-    [Fact]
+    [Test]
     public void CheckWinner_GameJustStarted_ReturnsNull()
     {
         var game = new TestGame().Started();
 
-        Assert.Null(game.Controller.CheckWinner());
+        Assert.That(game.Controller.CheckWinner(), Is.Null);
     }
 
-    [Fact]
+    [Test]
     public void CheckWinner_SomeShipsStillAfloat_ReturnsNull()
     {
         var game = new TestGame().Started();
@@ -37,40 +37,40 @@ public class GameControllerEndGameTests
             game.Controller.ProcessShot(game.Player1, cell);
         }
 
-        Assert.Null(game.Controller.CheckWinner());
+        Assert.That(game.Controller.CheckWinner(), Is.Null);
     }
 
-    [Fact]
+    [Test]
     public void CheckWinner_AllPlayer2ShipsSunk_ReturnsPlayer1()
     {
         var game = new TestGame().Started();
 
         SinkEverything(game, game.Player1);
 
-        Assert.Same(game.Player1, game.Controller.CheckWinner());
+        Assert.That(game.Controller.CheckWinner(), Is.SameAs(game.Player1));
     }
 
-    [Fact]
+    [Test]
     public void CheckWinner_AllPlayer1ShipsSunk_ReturnsPlayer2()
     {
         var game = new TestGame().Started();
 
         SinkEverything(game, game.Player2);
 
-        Assert.Same(game.Player2, game.Controller.CheckWinner());
+        Assert.That(game.Controller.CheckWinner(), Is.SameAs(game.Player2));
     }
 
-    [Fact]
+    [Test]
     public void EndGame_InProgress_StateBecomesFinished()
     {
         var game = new TestGame().Started();
 
         game.Controller.EndGame(game.Player2);
 
-        Assert.Equal(GameState.Finished, game.Controller.GetState());
+        Assert.That(game.Controller.GetState(), Is.EqualTo(GameState.Finished));
     }
 
-    [Fact]
+    [Test]
     public void EndGame_InProgress_RaisesOnGameEndedWithWinner()
     {
         var game = new TestGame().Started();
@@ -79,10 +79,11 @@ public class GameControllerEndGameTests
 
         game.Controller.EndGame(game.Player2);
 
-        Assert.Same(game.Player2, Assert.Single(winners));
+        Assert.That(winners, Has.Exactly(1).Items);
+        Assert.That(winners[0], Is.SameAs(game.Player2));
     }
 
-    [Fact]
+    [Test]
     public void EndGame_GameNotStarted_Throws()
     {
         var game = new TestGame();
@@ -90,7 +91,7 @@ public class GameControllerEndGameTests
         Assert.Throws<InvalidOperationException>(() => game.Controller.EndGame(game.Player1));
     }
 
-    [Fact]
+    [Test]
     public void EndGame_CalledTwice_ThrowsAndRaisesEventOnce()
     {
         var game = new TestGame().Started();
@@ -99,10 +100,10 @@ public class GameControllerEndGameTests
         game.Controller.EndGame(game.Player1);
 
         Assert.Throws<InvalidOperationException>(() => game.Controller.EndGame(game.Player1));
-        Assert.Equal(1, count);
+        Assert.That(count, Is.EqualTo(1));
     }
 
-    [Fact]
+    [Test]
     public void EndGame_WinnerNotInGame_Throws()
     {
         var game = new TestGame().Started();

@@ -1,68 +1,61 @@
-using Microsoft.Extensions.Logging;
+using Serilog.Events;
 
 namespace Battleship.Api.Tests;
 
-public class ErrorHandlingTests : IClassFixture<ApiFactory>
+public class ErrorHandlingTests : ApiTestFixture<ApiFactory>
 {
-    private readonly ApiFactory _factory;
-    private readonly HttpClient _http;
-
-    public ErrorHandlingTests(ApiFactory factory)
-    {
-        _factory = factory;
-        _http = factory.CreateClient();
-    }
-
-    [Fact]
+    [Test]
     public async Task ExpectedErrors_AreLoggedAsInformationAndNeverAsErrors()
     {
-        var game = await GameClient.CreateAsync(_http);
+        var game = await GameClient.CreateAsync(Http);
 
         await game.GetAsync(token: null);
         await game.FireAsync(0, 0);
-        await GameClient.SendAsync(_http, HttpMethod.Get, "/api/games/ZZZZZ", "x", null);
-        await GameClient.SendAsync(_http, HttpMethod.Post, "/api/games", null, new { });
+        await GameClient.SendAsync(Http, HttpMethod.Get, "/api/games/ZZZZZ", "x", null);
+        await GameClient.SendAsync(Http, HttpMethod.Post, "/api/games", null, new { });
 
-        var rejected = _factory.Logs.Entries.Where(e => e.Message.Contains("rejected with")).ToList();
-        Assert.True(rejected.Count >= 4);
-        Assert.All(rejected, e => Assert.Equal(LogLevel.Information, e.Level));
-        Assert.DoesNotContain(_factory.Logs.Entries, e => e.Level >= LogLevel.Error);
+        var rejected = Factory.Logs.Entries.Where(e => e.EventName == LogEvents.RequestRejected).ToList();
+        Assert.That(rejected.Count >= 4, Is.True);
+        Assert.That(rejected.Select(e => e.Level), Is.All.EqualTo(LogEventLevel.Information));
+        Assert.That(Factory.Logs.Entries.Any(e => e.Level >= LogEventLevel.Error), Is.False);
     }
 
-    [Fact]
+    [Test]
     public async Task RejectionLog_NamesTheStatusAndThePath()
     {
-        var game = await GameClient.CreateAsync(_http);
+        var game = await GameClient.CreateAsync(Http);
 
         await game.GetAsync("wrong");
 
-        Assert.Contains(_factory.Logs.Messages, m => m.Contains($"/api/games/{game.Code}") && m.Contains("rejected with 401"));
+        var rejection = Factory.Logs.Entries.Single(entry =>
+            entry.EventName == LogEvents.RequestRejected && Equals(entry.Properties.GetValueOrDefault("RequestPath"), $"/api/games/{game.Code}"));
+        Assert.That(rejection.Properties["StatusCode"], Is.EqualTo(401));
     }
 
-    [Fact]
+    [Test]
     public async Task WrongHttpMethod_Returns405()
     {
-        var game = await GameClient.CreateAsync(_http);
+        var game = await GameClient.CreateAsync(Http);
 
-        var response = await GameClient.SendAsync(_http, HttpMethod.Get, $"/api/games/{game.Code}/shots", game.Token, null);
+        var response = await GameClient.SendAsync(Http, HttpMethod.Get, $"/api/games/{game.Code}/shots", game.Token, null);
 
         await GameClient.AssertProblemAsync(response, 405);
     }
 
-    [Fact]
+    [Test]
     public async Task UnknownRoute_Returns404AsProblemDetails()
     {
-        var response = await _http.GetAsync("/api/nothing");
+        var response = await Http.GetAsync("/api/nothing");
 
         await GameClient.AssertProblemAsync(response, 404);
     }
 
-    [Fact]
+    [Test]
     public async Task WrongContentType_Returns415AsProblemDetails()
     {
         var content = new StringContent("playerName=Ann", System.Text.Encoding.UTF8, "text/plain");
 
-        var response = await _http.PostAsync("/api/games", content);
+        var response = await Http.PostAsync("/api/games", content);
 
         await GameClient.AssertProblemAsync(response, 415);
     }

@@ -3,23 +3,13 @@ using System.Diagnostics;
 using System.Net;
 using Battleship.Core;
 using Microsoft.Extensions.DependencyInjection;
-using Xunit.Abstractions;
 
 namespace Battleship.Api.Tests;
 
-public class LoadTests : IClassFixture<ApiFactory>
+// Reports latency and memory, so it must not share the CPU with other tests.
+[NonParallelizable]
+public class LoadTests : ApiTestFixture<ApiFactory>
 {
-    private readonly ApiFactory _factory;
-    private readonly HttpClient _http;
-    private readonly ITestOutputHelper _output;
-
-    public LoadTests(ApiFactory factory, ITestOutputHelper output)
-    {
-        _factory = factory;
-        _http = factory.CreateClient();
-        _output = output;
-    }
-
     private static int FromEnvironment(string name, int fallback)
         => int.TryParse(Environment.GetEnvironmentVariable(name), out var value) && value > 0 ? value : fallback;
 
@@ -48,21 +38,21 @@ public class LoadTests : IClassFixture<ApiFactory>
             {
                 last = await TimedAsync(latencies, () => game.FireOkAsync(x, y));
                 shots++;
-                Assert.NotEqual(ShotResult.Invalid, last.Result);
+                Assert.That(last.Result, Is.Not.EqualTo(ShotResult.Invalid));
             }
         }
 
-        Assert.Equal(GamePhase.Finished, last!.View.Phase);
-        Assert.Contains(last.View.Winner, new[] { "you", "opponent" });
+        Assert.That(last!.View.Phase, Is.EqualTo(GamePhase.Finished));
+        Assert.That(new[] { "you", "opponent" }, Does.Contain(last.View.Winner));
         return shots;
     }
 
-    [Fact]
+    [Test]
     public async Task ManyBotGamesAtOnce_AllEndWithAWinnerAndTheRequestsStayFast()
     {
         var games = FromEnvironment("LOAD_GAMES", 100);
         var concurrency = FromEnvironment("LOAD_CONCURRENCY", 50);
-        var store = _factory.Services.GetRequiredService<GameStore>();
+        var store = Factory.Services.GetRequiredService<GameStore>();
         var latencies = new ConcurrentBag<double>();
         var gate = new SemaphoreSlim(concurrency);
         var totalShots = 0;
@@ -74,7 +64,7 @@ public class LoadTests : IClassFixture<ApiFactory>
             await gate.WaitAsync();
             try
             {
-                var shots = await PlayBotGameAsync(_http, index % 2 == 0 ? "Random" : "HuntTarget", latencies);
+                var shots = await PlayBotGameAsync(Http, index % 2 == 0 ? "Random" : "HuntTarget", latencies);
                 Interlocked.Add(ref totalShots, shots);
             }
             finally
@@ -83,20 +73,21 @@ public class LoadTests : IClassFixture<ApiFactory>
             }
         }));
         clock.Stop();
+        Factory.Logs.Clear();
         var memoryAfter = GC.GetTotalMemory(forceFullCollection: true);
 
         var sorted = latencies.OrderBy(value => value).ToList();
         var p95 = Percentile(sorted, 0.95);
-        _output.WriteLine($"{games} games ({concurrency} at a time), {sorted.Count} requests in {clock.Elapsed.TotalSeconds:F2} s = {sorted.Count / clock.Elapsed.TotalSeconds:F0} requests/s");
-        _output.WriteLine($"latency ms: p50 {Percentile(sorted, 0.50):F2}, p95 {p95:F2}, p99 {Percentile(sorted, 0.99):F2}, max {sorted[^1]:F2}");
-        _output.WriteLine($"shots fired: {totalShots}; games kept in the store: {store.Count}");
-        _output.WriteLine($"memory kept by {games} finished games: {(memoryAfter - memoryBefore) / 1024.0:F0} KB = {(memoryAfter - memoryBefore) / 1024.0 / games:F1} KB per game");
+        TestContext.Out.WriteLine($"{games} games ({concurrency} at a time), {sorted.Count} requests in {clock.Elapsed.TotalSeconds:F2} s = {sorted.Count / clock.Elapsed.TotalSeconds:F0} requests/s");
+        TestContext.Out.WriteLine($"latency ms: p50 {Percentile(sorted, 0.50):F2}, p95 {p95:F2}, p99 {Percentile(sorted, 0.99):F2}, max {sorted[^1]:F2}");
+        TestContext.Out.WriteLine($"shots fired: {totalShots}; games kept in the store: {store.Count}");
+        TestContext.Out.WriteLine($"memory kept by {games} finished games: {(memoryAfter - memoryBefore) / 1024.0:F0} KB = {(memoryAfter - memoryBefore) / 1024.0 / games:F1} KB per game");
 
-        Assert.True(store.Count >= games);
-        Assert.True(p95 < 1000, $"p95 was {p95:F1} ms");
+        Assert.That(store.Count >= games, Is.True);
+        Assert.That(p95 < 1000, Is.True, $"p95 was {p95:F1} ms");
     }
 
-    [Fact]
+    [Test]
     public async Task TwoPlayersFiringAtTheSameMoment_AreServedOneAtATime()
     {
         const int battles = 20;
@@ -104,8 +95,8 @@ public class LoadTests : IClassFixture<ApiFactory>
 
         for (var round = 0; round < battles; round++)
         {
-            var ann = await GameClient.CreateRoomAsync(_http, "Ann");
-            var bob = await GameClient.JoinAsync(_http, ann.Code, "Bob");
+            var ann = await GameClient.CreateRoomAsync(Http, "Ann");
+            var bob = await GameClient.JoinAsync(Http, ann.Code, "Bob");
             await ann.PlaceFleetAsync();
             await bob.PlaceFleetAsync();
 
@@ -113,13 +104,13 @@ public class LoadTests : IClassFixture<ApiFactory>
             Interlocked.Add(ref rejected, results[0].Rejected + results[1].Rejected);
 
             var difference = results[0].Accepted - results[1].Accepted;
-            Assert.InRange(difference, 0, 1);
+            Assert.That(difference, Is.InRange(0, 1));
 
-            Assert.Equal(results[0].Accepted, CountShots(await ann.ViewAsync()));
-            Assert.Equal(results[1].Accepted, CountShots(await bob.ViewAsync()));
+            Assert.That(CountShots(await ann.ViewAsync()), Is.EqualTo(results[0].Accepted));
+            Assert.That(CountShots(await bob.ViewAsync()), Is.EqualTo(results[1].Accepted));
         }
 
-        _output.WriteLine($"{battles} battles with both players firing at once; {rejected} shots were refused because it was not their turn");
+        TestContext.Out.WriteLine($"{battles} battles with both players firing at once; {rejected} shots were refused because it was not their turn");
     }
 
     private static int CountShots(GameView view) => view.EnemyBoard.Cells.Sum(row => row.Count(cell => cell != EnemyCell.Unknown));
@@ -159,7 +150,7 @@ public class LoadTests : IClassFixture<ApiFactory>
         }
     }
 
-    [Fact]
+    [Test]
     public async Task ManyOnlineGamesAtOnce_EveryShotReachesBothPlayersOverSignalR()
     {
         var games = FromEnvironment("LOAD_ONLINE_GAMES", 20);
@@ -168,10 +159,10 @@ public class LoadTests : IClassFixture<ApiFactory>
 
         await Task.WhenAll(Enumerable.Range(0, games).Select(async _ =>
         {
-            var ann = await GameClient.CreateRoomAsync(_http, "Ann");
-            var bob = await GameClient.JoinAsync(_http, ann.Code, "Bob");
-            await using var annHub = await HubClient.ConnectAsync(_factory, ann);
-            await using var bobHub = await HubClient.ConnectAsync(_factory, bob);
+            var ann = await GameClient.CreateRoomAsync(Http, "Ann");
+            var bob = await GameClient.JoinAsync(Http, ann.Code, "Bob");
+            await using var annHub = await HubClient.ConnectAsync(Factory, ann);
+            await using var bobHub = await HubClient.ConnectAsync(Factory, bob);
             await ann.PlaceFleetAsync();
             await bob.PlaceFleetAsync();
             await annHub.WaitForAsync<GameStartedEvent>(GameEventNames.GameStarted);
@@ -192,13 +183,13 @@ public class LoadTests : IClassFixture<ApiFactory>
                 }
 
                 var events = hub.All<ShotResolvedEvent>(GameEventNames.ShotResolved).ToList();
-                Assert.Equal(shotsPerGame, events.Count);
-                Assert.Equal(shotsPerGame, events.Select(e => e.View.Version).Distinct().Count());
-                Assert.Equal(shotsPerGame / 2, events.Count(e => e.Shooter == "you"));
+                Assert.That(events.Count, Is.EqualTo(shotsPerGame));
+                Assert.That(events.Select(e => e.View.Version).Distinct().Count(), Is.EqualTo(shotsPerGame));
+                Assert.That(events.Count(e => e.Shooter == "you"), Is.EqualTo(shotsPerGame / 2));
             }
         }));
         clock.Stop();
 
-        _output.WriteLine($"{games} online games with 2 SignalR connections each: {games * shotsPerGame} shots, {games * shotsPerGame * 2} events delivered in {clock.Elapsed.TotalSeconds:F2} s");
+        TestContext.Out.WriteLine($"{games} online games with 2 SignalR connections each: {games * shotsPerGame} shots, {games * shotsPerGame * 2} events delivered in {clock.Elapsed.TotalSeconds:F2} s");
     }
 }

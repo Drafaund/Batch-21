@@ -1,102 +1,95 @@
 namespace Battleship.Api.Tests;
 
-public class GetGameTests : IClassFixture<ApiFactory>
+public class GetGameTests : ApiTestFixture<ApiFactory>
 {
-    private readonly HttpClient _http;
-
-    public GetGameTests(ApiFactory factory)
-    {
-        _http = factory.CreateClient();
-    }
-
-    [Fact]
+    [Test]
     public async Task Get_WithToken_ReturnsTheSameViewAsCreate()
     {
-        var game = await GameClient.CreateAsync(_http);
+        var game = await GameClient.CreateAsync(Http);
 
         var view = await game.ViewAsync();
 
-        Assert.Equal(game.InitialView, view, new GameViewComparer());
+        Assert.That(view, Is.EqualTo(game.InitialView).Using(new GameViewComparer()));
     }
 
-    [Fact]
+    [Test]
     public async Task Get_LowerCaseCode_FindsTheGame()
     {
-        var game = await GameClient.CreateAsync(_http);
+        var game = await GameClient.CreateAsync(Http);
 
-        var response = await GameClient.SendAsync(_http, HttpMethod.Get, $"/api/games/{game.Code.ToLowerInvariant()}", game.Token, null);
+        var response = await GameClient.SendAsync(Http, HttpMethod.Get, $"/api/games/{game.Code.ToLowerInvariant()}", game.Token, null);
 
-        Assert.True(response.IsSuccessStatusCode);
+        Assert.That(response.IsSuccessStatusCode, Is.True);
     }
 
-    [Fact]
+    [Test]
     public async Task Get_NoToken_Returns401()
     {
-        var game = await GameClient.CreateAsync(_http);
+        var game = await GameClient.CreateAsync(Http);
 
         var response = await game.GetAsync(token: null);
 
         await GameClient.AssertProblemAsync(response, 401);
     }
 
-    [Fact]
+    [Test]
     public async Task Get_WrongToken_Returns401()
     {
-        var game = await GameClient.CreateAsync(_http);
+        var game = await GameClient.CreateAsync(Http);
 
         var response = await game.GetAsync("not-the-token");
 
         await GameClient.AssertProblemAsync(response, 401);
     }
 
-    [Fact]
+    [Test]
     public async Task Get_TokenOfAnotherGame_Returns401()
     {
-        var first = await GameClient.CreateAsync(_http);
-        var second = await GameClient.CreateAsync(_http);
+        var first = await GameClient.CreateAsync(Http);
+        var second = await GameClient.CreateAsync(Http);
 
         var response = await first.GetAsync(second.Token);
 
         await GameClient.AssertProblemAsync(response, 401);
     }
 
-    [Fact]
+    [Test]
     public async Task Get_UnknownCode_Returns404()
     {
-        var response = await GameClient.SendAsync(_http, HttpMethod.Get, "/api/games/ZZZZZ", "any", null);
+        var response = await GameClient.SendAsync(Http, HttpMethod.Get, "/api/games/ZZZZZ", "any", null);
 
         await GameClient.AssertProblemAsync(response, 404);
     }
 
-    [Fact]
+    [Test]
     public async Task Get_Response_NeverContainsTheToken()
     {
-        var game = await GameClient.CreateAsync(_http);
+        var game = await GameClient.CreateAsync(Http);
 
         var text = await (await game.GetAsync()).Content.ReadAsStringAsync();
 
-        Assert.DoesNotContain(game.Token, text);
+        Assert.That(text, Does.Not.Contain(game.Token));
     }
 
-    [Fact]
+    [Test]
     public async Task Get_TwoGames_AreIndependent()
     {
-        var first = await GameClient.CreateAsync(_http, "Ann");
-        var second = await GameClient.CreateAsync(_http, "Bob");
+        var first = await GameClient.CreateAsync(Http, "Ann");
+        var second = await GameClient.CreateAsync(Http, "Bob");
 
         await first.PlaceFleetAsync();
 
-        Assert.Equal(GamePhase.InProgress, (await first.ViewAsync()).Phase);
-        Assert.Equal(GamePhase.Placing, (await second.ViewAsync()).Phase);
-        Assert.Equal("Bob", (await second.ViewAsync()).You.Name);
+        Assert.That((await first.ViewAsync()).Phase, Is.EqualTo(GamePhase.InProgress));
+        Assert.That((await second.ViewAsync()).Phase, Is.EqualTo(GamePhase.Placing));
+        Assert.That((await second.ViewAsync()).You.Name, Is.EqualTo("Bob"));
     }
 
-    [Fact]
+    [Test]
     public async Task UnknownRoute_Returns404()
     {
-        var response = await _http.GetAsync("/api/nothing");
+        var response = await Http.GetAsync("/api/nothing");
 
-        Assert.Equal(System.Net.HttpStatusCode.NotFound, response.StatusCode);
+        Assert.That(response.StatusCode, Is.EqualTo(System.Net.HttpStatusCode.NotFound));
     }
 
     private sealed class GameViewComparer : IEqualityComparer<GameView>

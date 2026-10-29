@@ -4,26 +4,26 @@ using Battleship.Core;
 
 public class BoardTests
 {
-    [Fact]
+    [Test]
     public void Constructor_NewBoard_HasBoardSizeTen()
     {
         var board = new Board();
 
-        Assert.Equal(10, board.BoardSize);
+        Assert.That(board.BoardSize, Is.EqualTo(10));
     }
 
-    [Fact]
+    [Test]
     public void Constructor_NewBoard_HasTenByTenCells()
     {
         var board = new Board();
 
-        Assert.Equal(2, board.Cells.Rank);
-        Assert.Equal(10, board.Cells.GetLength(0));
-        Assert.Equal(10, board.Cells.GetLength(1));
-        Assert.Equal(100, board.Cells.Length);
+        Assert.That(board.Cells.Rank, Is.EqualTo(2));
+        Assert.That(board.Cells.GetLength(0), Is.EqualTo(10));
+        Assert.That(board.Cells.GetLength(1), Is.EqualTo(10));
+        Assert.That(board.Cells.Length, Is.EqualTo(100));
     }
 
-    [Fact]
+    [Test]
     public void Constructor_NewBoard_EveryCellIsPresentWithMatchingPosition()
     {
         var board = new Board();
@@ -32,25 +32,25 @@ public class BoardTests
         {
             for (var y = 0; y < board.BoardSize; y++)
             {
-                Assert.NotNull(board.Cells[x, y]);
-                Assert.Equal(new Coordinate(x, y), board.Cells[x, y].Position);
+                Assert.That(board.Cells[x, y], Is.Not.Null);
+                Assert.That(board.Cells[x, y].Position, Is.EqualTo(new Coordinate(x, y)));
             }
         }
     }
 
-    [Fact]
+    [Test]
     public void Constructor_NewBoard_AllCellsAreEmptyAndUnoccupied()
     {
         var board = new Board();
 
         foreach (var cell in board.Cells)
         {
-            Assert.Equal(CellState.Empty, cell.State);
-            Assert.False(cell.IsOccupied);
+            Assert.That(cell.State, Is.EqualTo(CellState.Empty));
+            Assert.That(cell.IsOccupied, Is.False);
         }
     }
 
-    [Fact]
+    [Test]
     public void Constructor_TwoBoards_DoNotShareCells()
     {
         var first = new Board();
@@ -58,6 +58,6 @@ public class BoardTests
 
         first.Cells[0, 0].State = CellState.Miss;
 
-        Assert.Equal(CellState.Empty, second.Cells[0, 0].State);
+        Assert.That(second.Cells[0, 0].State, Is.EqualTo(CellState.Empty));
     }
 }

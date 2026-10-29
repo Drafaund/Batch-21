@@ -1,7 +1,7 @@
 ﻿using Battleship.ConsoleApp;
 using Battleship.Core;
-using Microsoft.Extensions.Logging;
 using Serilog;
+using Serilog.Formatting.Compact;
 using Spectre.Console;
 
 const int BotPauseMilliseconds = 700;
@@ -16,9 +16,8 @@ var screen = new ConsoleScreen(AnsiConsole.Console, TimeSpan.FromMilliseconds(Bo
 
 using var serilog = new LoggerConfiguration()
     .MinimumLevel.Information()
-    .WriteTo.File(Path.Combine(AppContext.BaseDirectory, "logs", "battleship-.log"), rollingInterval: RollingInterval.Day)
+    .WriteTo.File(new CompactJsonFormatter(), Path.Combine(AppContext.BaseDirectory, "logs", "battleship-.log"), rollingInterval: RollingInterval.Day)
     .CreateLogger();
-using var loggerFactory = LoggerFactory.Create(builder => builder.AddSerilog(serilog));
 
 var setup = new MainMenu(screen).Ask();
 
@@ -33,7 +32,7 @@ var (first, second) = setup.Mode switch
 };
 
 var controller = new GameController(first.Player, first.Strategy, second.Player, second.Strategy);
-new GameEventReporter(screen, loggerFactory.CreateLogger<GameEventReporter>()).Attach(controller);
+new GameEventReporter(screen, serilog).Attach(controller);
 
 var renderer = new BoardRenderer(screen);
 var placement = new PlacementPhase(screen, renderer, controller, random);

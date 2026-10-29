@@ -3,96 +3,89 @@ using Battleship.Core;
 
 namespace Battleship.Api.Tests;
 
-public class PlaceShipTests : IClassFixture<ApiFactory>
+public class PlaceShipTests : ApiTestFixture<ApiFactory>
 {
-    private readonly HttpClient _http;
-
-    public PlaceShipTests(ApiFactory factory)
-    {
-        _http = factory.CreateClient();
-    }
-
     private static int CountOwn(GameView view, OwnCell kind) => view.OwnBoard.Cells.Sum(row => row.Count(cell => cell == kind));
 
-    [Fact]
+    [Test]
     public async Task PlaceShip_ValidHorizontal_FillsShipBoardAndPlacement()
     {
-        var game = await GameClient.CreateAsync(_http);
+        var game = await GameClient.CreateAsync(Http);
 
         var response = await game.PlaceShipAsync(ShipType.Cruiser, 2, 4, Orientation.Horizontal);
 
-        Assert.True(response.IsSuccessStatusCode);
+        Assert.That(response.IsSuccessStatusCode, Is.True);
         var view = await GameClient.ReadAsync<GameView>(response);
-        var ship = Assert.Single(view.OwnShips);
-        Assert.Equal(ShipType.Cruiser, ship.Type);
-        Assert.Equal(3, ship.Length);
-        Assert.Equal(Orientation.Horizontal, ship.Orientation);
-        Assert.Equal(new[] { new CoordinateDto(2, 4), new CoordinateDto(3, 4), new CoordinateDto(4, 4) }, ship.Positions);
-        Assert.Equal(3, CountOwn(view, OwnCell.Ship));
-        Assert.Equal(OwnCell.Ship, view.OwnBoard.Cells[4][2]);
-        Assert.Equal(OwnCell.Ship, view.OwnBoard.Cells[4][4]);
-        Assert.Equal(new[] { ShipType.Cruiser }, view.Placement.Placed);
-        Assert.Equal(4, view.Placement.Remaining.Count);
-        Assert.DoesNotContain(ShipType.Cruiser, view.Placement.Remaining);
-        Assert.Equal(GamePhase.Placing, view.Phase);
-        Assert.False(view.YourTurn);
+        Assert.That(view.OwnShips, Has.Exactly(1).Items);
+        var ship = view.OwnShips.Single();
+        Assert.That(ship.Type, Is.EqualTo(ShipType.Cruiser));
+        Assert.That(ship.Length, Is.EqualTo(3));
+        Assert.That(ship.Orientation, Is.EqualTo(Orientation.Horizontal));
+        Assert.That(ship.Positions, Is.EqualTo(new[] { new CoordinateDto(2, 4), new CoordinateDto(3, 4), new CoordinateDto(4, 4) }));
+        Assert.That(CountOwn(view, OwnCell.Ship), Is.EqualTo(3));
+        Assert.That(view.OwnBoard.Cells[4][2], Is.EqualTo(OwnCell.Ship));
+        Assert.That(view.OwnBoard.Cells[4][4], Is.EqualTo(OwnCell.Ship));
+        Assert.That(view.Placement.Placed, Is.EqualTo(new[] { ShipType.Cruiser }));
+        Assert.That(view.Placement.Remaining.Count, Is.EqualTo(4));
+        Assert.That(view.Placement.Remaining, Does.Not.Contain(ShipType.Cruiser));
+        Assert.That(view.Phase, Is.EqualTo(GamePhase.Placing));
+        Assert.That(view.YourTurn, Is.False);
     }
 
-    [Fact]
+    [Test]
     public async Task PlaceShip_ValidVertical_ExtendsDownward()
     {
-        var game = await GameClient.CreateAsync(_http);
+        var game = await GameClient.CreateAsync(Http);
 
         var view = await GameClient.ReadAsync<GameView>(await game.PlaceShipAsync(ShipType.Destroyer, 7, 8, Orientation.Vertical));
 
-        Assert.Equal(new[] { new CoordinateDto(7, 8), new CoordinateDto(7, 9) }, view.OwnShips[0].Positions);
-        Assert.Equal(OwnCell.Ship, view.OwnBoard.Cells[9][7]);
+        Assert.That(view.OwnShips[0].Positions, Is.EqualTo(new[] { new CoordinateDto(7, 8), new CoordinateDto(7, 9) }));
+        Assert.That(view.OwnBoard.Cells[9][7], Is.EqualTo(OwnCell.Ship));
     }
 
-    [Fact]
+    [Test]
     public async Task PlaceShip_Valid_IncreasesTheVersion()
     {
-        var game = await GameClient.CreateAsync(_http);
+        var game = await GameClient.CreateAsync(Http);
 
         var view = await GameClient.ReadAsync<GameView>(await game.PlaceShipAsync(ShipType.Destroyer, 0, 0, Orientation.Horizontal));
 
-        Assert.Equal(game.InitialView.Version + 1, view.Version);
+        Assert.That(view.Version, Is.EqualTo(game.InitialView.Version + 1));
     }
 
-    [Fact]
+    [Test]
     public async Task PlaceShip_ShipEndingOnTheLastCell_IsAccepted()
     {
-        var game = await GameClient.CreateAsync(_http);
+        var game = await GameClient.CreateAsync(Http);
 
         var response = await game.PlaceShipAsync(ShipType.Carrier, 5, 9, Orientation.Horizontal);
 
-        Assert.True(response.IsSuccessStatusCode);
+        Assert.That(response.IsSuccessStatusCode, Is.True);
     }
 
-    [Theory]
-    [InlineData(6, 0, Orientation.Horizontal)]
-    [InlineData(0, 6, Orientation.Vertical)]
-    [InlineData(-1, 0, Orientation.Horizontal)]
-    [InlineData(0, -1, Orientation.Vertical)]
-    [InlineData(10, 0, Orientation.Vertical)]
-    [InlineData(0, 10, Orientation.Horizontal)]
+    [TestCase(6, 0, Orientation.Horizontal)]
+    [TestCase(0, 6, Orientation.Vertical)]
+    [TestCase(-1, 0, Orientation.Horizontal)]
+    [TestCase(0, -1, Orientation.Vertical)]
+    [TestCase(10, 0, Orientation.Vertical)]
+    [TestCase(0, 10, Orientation.Horizontal)]
     public async Task PlaceShip_PartlyOutsideTheBoard_Returns409AndChangesNothing(int x, int y, Orientation orientation)
     {
-        var game = await GameClient.CreateAsync(_http);
+        var game = await GameClient.CreateAsync(Http);
 
         var response = await game.PlaceShipAsync(ShipType.Carrier, x, y, orientation);
 
         await GameClient.AssertProblemAsync(response, 409);
         var view = await game.ViewAsync();
-        Assert.Empty(view.OwnShips);
-        Assert.Equal(game.InitialView.Version, view.Version);
-        Assert.Equal(0, CountOwn(view, OwnCell.Ship));
+        Assert.That(view.OwnShips, Is.Empty);
+        Assert.That(view.Version, Is.EqualTo(game.InitialView.Version));
+        Assert.That(CountOwn(view, OwnCell.Ship), Is.EqualTo(0));
     }
 
-    [Fact]
+    [Test]
     public async Task PlaceShip_OverlappingAnotherShip_Returns409()
     {
-        var game = await GameClient.CreateAsync(_http);
+        var game = await GameClient.CreateAsync(Http);
         await game.PlaceShipAsync(ShipType.Carrier, 0, 0, Orientation.Horizontal);
 
         var response = await game.PlaceShipAsync(ShipType.Destroyer, 4, 0, Orientation.Vertical);
@@ -100,47 +93,47 @@ public class PlaceShipTests : IClassFixture<ApiFactory>
         await GameClient.AssertProblemAsync(response, 409);
     }
 
-    [Fact]
+    [Test]
     public async Task PlaceShip_TouchingAnotherShipWithoutOverlap_IsAccepted()
     {
-        var game = await GameClient.CreateAsync(_http);
+        var game = await GameClient.CreateAsync(Http);
         await game.PlaceShipAsync(ShipType.Carrier, 0, 0, Orientation.Horizontal);
 
         var response = await game.PlaceShipAsync(ShipType.Destroyer, 5, 0, Orientation.Vertical);
 
-        Assert.True(response.IsSuccessStatusCode);
+        Assert.That(response.IsSuccessStatusCode, Is.True);
     }
 
-    [Fact]
+    [Test]
     public async Task PlaceShip_ShipTypeAlreadyPlaced_Returns409()
     {
-        var game = await GameClient.CreateAsync(_http);
+        var game = await GameClient.CreateAsync(Http);
         await game.PlaceShipAsync(ShipType.Cruiser, 0, 0, Orientation.Horizontal);
 
         var response = await game.PlaceShipAsync(ShipType.Cruiser, 0, 5, Orientation.Horizontal);
 
         await GameClient.AssertProblemAsync(response, 409);
-        Assert.Single((await game.ViewAsync()).OwnShips);
+        Assert.That((await game.ViewAsync()).OwnShips, Has.Exactly(1).Items);
     }
 
-    [Fact]
+    [Test]
     public async Task PlaceShip_FifthShip_StartsTheGameAndGivesTheFirstTurnToThePlayer()
     {
-        var game = await GameClient.CreateAsync(_http);
+        var game = await GameClient.CreateAsync(Http);
 
         var view = await game.PlaceFleetAsync();
 
-        Assert.Equal(GamePhase.InProgress, view.Phase);
-        Assert.True(view.YourTurn);
-        Assert.Equal(5, view.OwnShips.Count);
-        Assert.Empty(view.Placement.Remaining);
-        Assert.Equal(17, CountOwn(view, OwnCell.Ship));
+        Assert.That(view.Phase, Is.EqualTo(GamePhase.InProgress));
+        Assert.That(view.YourTurn, Is.True);
+        Assert.That(view.OwnShips.Count, Is.EqualTo(5));
+        Assert.That(view.Placement.Remaining, Is.Empty);
+        Assert.That(CountOwn(view, OwnCell.Ship), Is.EqualTo(17));
     }
 
-    [Fact]
+    [Test]
     public async Task PlaceShip_FourShips_GameStaysInPlacing()
     {
-        var game = await GameClient.CreateAsync(_http);
+        var game = await GameClient.CreateAsync(Http);
         foreach (var type in new[] { ShipType.Carrier, ShipType.Battleship, ShipType.Cruiser, ShipType.Submarine })
         {
             await game.PlaceShipAsync(type, 0, (int)type, Orientation.Horizontal);
@@ -148,14 +141,14 @@ public class PlaceShipTests : IClassFixture<ApiFactory>
 
         var view = await game.ViewAsync();
 
-        Assert.Equal(GamePhase.Placing, view.Phase);
-        Assert.False(view.YourTurn);
+        Assert.That(view.Phase, Is.EqualTo(GamePhase.Placing));
+        Assert.That(view.YourTurn, Is.False);
     }
 
-    [Fact]
+    [Test]
     public async Task PlaceShip_AfterTheGameStarted_Returns409()
     {
-        var game = await GameClient.CreateAsync(_http);
+        var game = await GameClient.CreateAsync(Http);
         await game.PlaceFleetAsync();
 
         var response = await game.PlaceShipAsync(ShipType.Destroyer, 0, 9, Orientation.Horizontal);
@@ -163,65 +156,64 @@ public class PlaceShipTests : IClassFixture<ApiFactory>
         await GameClient.AssertProblemAsync(response, 409);
     }
 
-    [Fact]
+    [Test]
     public async Task PlaceShip_EmptyJsonObject_Returns400()
     {
-        var game = await GameClient.CreateAsync(_http);
+        var game = await GameClient.CreateAsync(Http);
 
         var response = await game.PostRawAsync("ships", new { });
 
         await GameClient.AssertProblemAsync(response, 400);
     }
 
-    [Fact]
+    [Test]
     public async Task PlaceShip_NoBody_Returns400()
     {
-        var game = await GameClient.CreateAsync(_http);
+        var game = await GameClient.CreateAsync(Http);
 
         var response = await game.PostRawAsync("ships", null);
 
         await GameClient.AssertProblemAsync(response, 400);
     }
 
-    [Theory]
-    [InlineData("Dreadnought", "Horizontal")]
-    [InlineData("Carrier", "Diagonal")]
-    [InlineData(0, "Horizontal")]
-    [InlineData("Carrier", 1)]
+    [TestCase("Dreadnought", "Horizontal")]
+    [TestCase("Carrier", "Diagonal")]
+    [TestCase(0, "Horizontal")]
+    [TestCase("Carrier", 1)]
     public async Task PlaceShip_UnknownOrNumericEnum_Returns400(object type, object orientation)
     {
-        var game = await GameClient.CreateAsync(_http);
+        var game = await GameClient.CreateAsync(Http);
 
         var response = await game.PostRawAsync("ships", new { type, start = new { x = 0, y = 0 }, orientation });
 
         await GameClient.AssertProblemAsync(response, 400);
     }
 
-    [Fact]
+    [Test]
     public async Task PlaceShip_MissingStart_Returns400()
     {
-        var game = await GameClient.CreateAsync(_http);
+        var game = await GameClient.CreateAsync(Http);
 
         var response = await game.PostRawAsync("ships", new { type = "Carrier", orientation = "Horizontal" });
 
         await GameClient.AssertProblemAsync(response, 400);
     }
 
-    [Fact]
+    [Test]
     public async Task PlaceShip_NoToken_Returns401()
     {
-        var game = await GameClient.CreateAsync(_http);
+        var game = await GameClient.CreateAsync(Http);
 
         var response = await game.PlaceShipAsync(null, ShipType.Carrier, 0, 0, Orientation.Horizontal);
 
         await GameClient.AssertProblemAsync(response, 401);
     }
 
-    [Fact]
+    [Test]
     public async Task PlaceShip_UnknownCode_Returns404()
     {
         var response = await GameClient.SendAsync(
-            _http,
+            Http,
             HttpMethod.Post,
             "/api/games/ZZZZZ/ships",
             "any",
@@ -230,42 +222,42 @@ public class PlaceShipTests : IClassFixture<ApiFactory>
         await GameClient.AssertProblemAsync(response, 404);
     }
 
-    [Fact]
+    [Test]
     public async Task PlaceRandom_NoShipsYet_PlacesAllFiveAndStartsTheGame()
     {
-        var game = await GameClient.CreateAsync(_http);
+        var game = await GameClient.CreateAsync(Http);
 
         var response = await game.PlaceRandomAsync();
 
-        Assert.True(response.IsSuccessStatusCode);
+        Assert.That(response.IsSuccessStatusCode, Is.True);
         var view = await GameClient.ReadAsync<GameView>(response);
-        Assert.Equal(GamePhase.InProgress, view.Phase);
-        Assert.True(view.YourTurn);
-        Assert.Equal(5, view.OwnShips.Count);
-        Assert.Equal(17, CountOwn(view, OwnCell.Ship));
-        Assert.Equal(Enum.GetValues<ShipType>().OrderBy(t => t), view.OwnShips.Select(s => s.Type).OrderBy(t => t));
+        Assert.That(view.Phase, Is.EqualTo(GamePhase.InProgress));
+        Assert.That(view.YourTurn, Is.True);
+        Assert.That(view.OwnShips.Count, Is.EqualTo(5));
+        Assert.That(CountOwn(view, OwnCell.Ship), Is.EqualTo(17));
+        Assert.That(view.OwnShips.Select(s => s.Type).OrderBy(t => t), Is.EqualTo(Enum.GetValues<ShipType>().OrderBy(t => t)));
     }
 
-    [Fact]
+    [Test]
     public async Task PlaceRandom_Placement_StaysInsideTheBoardWithoutOverlap()
     {
         for (var i = 0; i < 10; i++)
         {
-            var game = await GameClient.CreateAsync(_http);
+            var game = await GameClient.CreateAsync(Http);
 
             var view = await GameClient.ReadAsync<GameView>(await game.PlaceRandomAsync());
 
             var cells = view.OwnShips.SelectMany(s => s.Positions).ToList();
-            Assert.Equal(17, cells.Distinct().Count());
-            Assert.All(cells, c => Assert.InRange(c.X, 0, 9));
-            Assert.All(cells, c => Assert.InRange(c.Y, 0, 9));
+            Assert.That(cells.Distinct().Count(), Is.EqualTo(17));
+            Assert.That(cells.Select(c => c.X), Is.All.InRange(0, 9));
+            Assert.That(cells.Select(c => c.Y), Is.All.InRange(0, 9));
         }
     }
 
-    [Fact]
+    [Test]
     public async Task PlaceRandom_AfterAShipWasPlaced_Returns409()
     {
-        var game = await GameClient.CreateAsync(_http);
+        var game = await GameClient.CreateAsync(Http);
         await game.PlaceShipAsync(ShipType.Carrier, 0, 0, Orientation.Horizontal);
 
         var response = await game.PlaceRandomAsync();
@@ -273,10 +265,10 @@ public class PlaceShipTests : IClassFixture<ApiFactory>
         await GameClient.AssertProblemAsync(response, 409);
     }
 
-    [Fact]
+    [Test]
     public async Task PlaceRandom_Twice_SecondCallReturns409()
     {
-        var game = await GameClient.CreateAsync(_http);
+        var game = await GameClient.CreateAsync(Http);
         await game.PlaceRandomAsync();
 
         var response = await game.PlaceRandomAsync();
@@ -284,20 +276,20 @@ public class PlaceShipTests : IClassFixture<ApiFactory>
         await GameClient.AssertProblemAsync(response, 409);
     }
 
-    [Fact]
+    [Test]
     public async Task PlaceRandom_NoToken_Returns401()
     {
-        var game = await GameClient.CreateAsync(_http);
+        var game = await GameClient.CreateAsync(Http);
 
         var response = await game.PlaceRandomAsync(null);
 
         await GameClient.AssertProblemAsync(response, 401);
     }
 
-    [Fact]
+    [Test]
     public async Task PlaceShip_OverTheWire_IsPostedAsJson()
     {
-        var game = await GameClient.CreateAsync(_http);
+        var game = await GameClient.CreateAsync(Http);
         var request = new HttpRequestMessage(HttpMethod.Post, $"/api/games/{game.Code}/ships");
         request.Headers.Add(GameClient.TokenHeader, game.Token);
         request.Content = new StringContent(
@@ -305,9 +297,9 @@ public class PlaceShipTests : IClassFixture<ApiFactory>
             System.Text.Encoding.UTF8,
             "application/json");
 
-        var response = await _http.SendAsync(request);
+        var response = await Http.SendAsync(request);
 
-        Assert.True(response.IsSuccessStatusCode);
-        Assert.Equal(ShipType.Submarine, (await GameClient.ReadAsync<GameView>(response)).OwnShips[0].Type);
+        Assert.That(response.IsSuccessStatusCode, Is.True);
+        Assert.That((await GameClient.ReadAsync<GameView>(response)).OwnShips[0].Type, Is.EqualTo(ShipType.Submarine));
     }
 }

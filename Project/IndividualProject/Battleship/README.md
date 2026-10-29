@@ -70,7 +70,7 @@ The browser offers the same two bots, plus online play between two people.
 - **Winning**: sink all five enemy ships.
 - Boards use `~` water, `#` ship, `X` hit, `o` miss. The enemy board only ever shows hits and misses.
 
-Shots and the winner are also written to a log file next to the executable:
+Shots and the winner are also written to a log file next to the executable, one JSON object per line:
 `Battleship.Console/bin/<Configuration>/net8.0/logs/battleship-<date>.log`.
 
 ## Project structure
@@ -94,8 +94,8 @@ Battleship/
 │   ├── Games/               GameSession, GameStore, OnlinePlayer, Seat, ViewMapper, EmoteCatalog, error handling
 │   ├── Hubs/                the SignalR hub, hub authentication, and the sink that sends events to players
 │   └── Controllers/         GamesController (REST) and the Result-to-HTTP mapping
-├── Battleship.Tests/        xUnit tests for Battleship.Core
-├── Battleship.Api.Tests/    integration tests for the API (WebApplicationFactory, SignalR clients)
+├── Battleship.Tests/        NUnit tests for Battleship.Core
+├── Battleship.Api.Tests/    NUnit integration tests for the API (WebApplicationFactory, SignalR clients)
 └── battleship-web/          React front end (Vite, TypeScript), with Vitest and Playwright tests
 ```
 
@@ -118,18 +118,28 @@ The web version adds these rules on top of Core (details in [WEB_DESIGN.md](WEB_
 
 The class diagram is in [battleship.v3.mmd](battleship.v3.mmd). It covers `Battleship.Core`, including the enumerations and the `Coordinate` struct; the console and API classes are outside it.
 
+## Logging
+
+Both apps log with [Serilog](https://serilog.net). Our own code calls `Serilog.ILogger` directly; the framework (ASP.NET Core, SignalR) logs through .NET's `ILogger`, and `UseSerilog` forwards that to the same place.
+
+- **File**: one JSON object per line (`CompactJsonFormatter`). The message template is kept as `@mt` and every value is its own field: `PlayerName`, `Target` (with `X` and `Y`), `Result`, `GameCode`, `RequestId`, `EventName`, and so on. The API writes `logs/battleship-api-<date>.log` relative to the working directory and keeps 31 files. Player tokens are never logged.
+- **Console**: the API also prints plain text, for example `[11:04:34 INF] Ann fired at Coordinate {X=0, Y=0}: Miss`.
+- **Requests**: one line per HTTP request (`HTTP POST /api/games/ABCDE/shots responded 200 in 3.2 ms`). A rejected request also logs the reason (`EventName` `RequestRejected`).
+- **Configuration**: the `Serilog` section of `Battleship.Api/appsettings.json` (level, sinks, path, retention). Any value can be overridden with an environment variable, for example `Serilog__MinimumLevel__Default=Warning`.
+- `GameController` does not log. It raises `OnShotResolved` and `OnGameEnded`; `GameSession` (API) and `GameEventReporter` (console) write the entries.
+
 ## Tests
 
 ```
 dotnet test Battleship.Tests
 ```
 
-177 test cases (142 test methods; theories run several cases each), all passing:
+178 test cases (143 test methods; a method with several `[TestCase]` attributes runs once per case), all passing:
 
 | Area | Test methods |
 |---|---|
 | `Ship`, `Cell`, `Board`, `Fleet` | 20 |
-| `GameController` (setup, random placement, shots, turns, end of game) | 89 |
+| `GameController` (setup, random placement, shots, turns, end of game) | 90 |
 | `HumanPlayer`, `RandomAIPlayer`, `HuntTargetAIPlayer` | 27 |
 | Full AI games (Random vs Random, Hunt vs Hunt, mixed) and the bot comparison | 6 |
 
@@ -141,26 +151,28 @@ Coverage of `Battleship.Core` (from `dotnet test Battleship.Tests --collect:"XPl
 dotnet test Battleship.Api.Tests
 ```
 
-186 test cases (165 test methods), all passing. They start the API in memory and talk to it over HTTP (and over SignalR for online games) with seeded randomness, so a run is repeatable.
+218 test cases (194 test methods), all passing. They start the API in memory and talk to it over HTTP (and over SignalR for online games) with seeded randomness, so a run is repeatable. Test classes run in parallel (each has its own in-memory server); `LoadTests` runs alone so its timings are not disturbed by other tests.
 
 | Area | Test methods |
 |---|---|
 | Creating a game and its validation | 18 |
 | Reading a game and the token check | 9 |
 | Placing ships by hand and at random | 23 |
-| Firing, bot replies, invalid shots | 15 |
+| Firing, bot replies, invalid shots | 16 |
 | Whole games over HTTP, both bots | 5 |
 | Hidden information: the enemy board never shows a ship | 7 |
 | Sunk ships on the enemy board | 7 |
 | Error format and logging | 5 |
+| The JSON log file: one object per line, expected fields, no player tokens, unhandled exceptions | 3 |
 | Online games: rooms, joining, two players | 20 |
-| SignalR hub and its events | 17 |
+| SignalR hub and its events | 18 |
 | Emotes | 14 |
-| Turn limit and absent players | 11 |
-| Classes behind the endpoints | 11 |
+| Turn limit and absent players | 12 |
+| Classes behind the endpoints (`GameSession`, `GameStore`, `OnlinePlayer`, `Result`) | 24 |
+| The in-memory log sink the tests read logs with | 10 |
 | Load: many games at once, two players firing at the same moment, SignalR delivery | 3 |
 
-Coverage of `Battleship.Api`: 96.1% of lines and 91.0% of branches.
+Coverage of `Battleship.Api`: 98.5% of lines and 94.3% of branches.
 
 #### Load tests
 
@@ -174,15 +186,15 @@ Coverage of `Battleship.Api`: 96.1% of lines and 91.0% of branches.
 dotnet test Battleship.Api.Tests --filter "FullyQualifiedName~LoadTests" --logger "console;verbosity=detailed"
 ```
 
-The size of the run can be changed with `LOAD_GAMES`, `LOAD_CONCURRENCY`, and `LOAD_ONLINE_GAMES`. The API runs in memory inside the test process (no network), and the test client shares the CPU with it, so the numbers show the cost of the API itself and not of a real network. One run in Release on a laptop with 12 logical processors:
+The size of the run can be changed with `LOAD_GAMES`, `LOAD_CONCURRENCY`, and `LOAD_ONLINE_GAMES`. The API runs in memory inside the test process (no network), and the test client shares the CPU with it, so the numbers show the cost of the API itself and not of a real network. Median of three runs per row, in Release on a laptop with 12 logical processors, with logging at the default `Information` level:
 
 | Clients at once | Requests per second | Latency p50 | p95 | p99 |
 |---|---|---|---|---|
-| 1 | 627 | 1.1 ms | 2.9 ms | 4.3 ms |
-| 10 | 1,662 | 3.9 ms | 11.3 ms | 25.0 ms |
-| 100 | 2,178 | 40.3 ms | 85.5 ms | 117.1 ms |
+| 1 | 337 | 2.4 ms | 4.3 ms | 6.7 ms |
+| 10 | 1,193 | 6.3 ms | 16.4 ms | 26.1 ms |
+| 100 | 1,504 | 64.2 ms | 95.5 ms | 127.5 ms |
 
-With 100 clients the machine is saturated, so requests wait in a queue: latency is about the number of clients divided by the requests per second (100 / 2,178 is about 46 ms). A single request still takes about a millisecond. Fifty online games (100 SignalR connections) delivered 1,000 events in 1.9 s. A finished game keeps about 22 KB in memory, and finished games are not removed yet (see [Planned](#planned)).
+With 100 clients the machine is saturated, so requests wait in a queue: latency is about the number of clients divided by the requests per second (100 / 1,504 is about 66 ms). A single request takes about 2 ms. Logging is a large part of that cost: with the level set to `Warning` (`Serilog__MinimumLevel__Default=Warning`) the same 100 clients reach about 3,200 requests per second, so logging every request and shot costs about half the throughput. Fifty online games (100 SignalR connections) delivered 1,000 events in about 2.2 s. A finished game keeps about 38 KB in memory (32 KB at `Warning`), and finished games are not removed yet (see [Planned](#planned)).
 
 ### Front end tests
 

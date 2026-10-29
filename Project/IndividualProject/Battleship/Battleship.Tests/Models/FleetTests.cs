@@ -4,16 +4,16 @@ using Battleship.Core;
 
 public class FleetTests
 {
-    [Fact]
+    [Test]
     public void Constructor_NewFleet_ShipsIsEmptyAndNotNull()
     {
         var fleet = new Fleet();
 
-        Assert.NotNull(fleet.Ships);
-        Assert.Empty(fleet.Ships);
+        Assert.That(fleet.Ships, Is.Not.Null);
+        Assert.That(fleet.Ships, Is.Empty);
     }
 
-    [Fact]
+    [Test]
     public void Ships_AddShip_ContainsShip()
     {
         var fleet = new Fleet();
@@ -21,11 +21,11 @@ public class FleetTests
 
         fleet.Ships.Add(ship);
 
-        Assert.Single(fleet.Ships);
-        Assert.Same(ship, fleet.Ships[0]);
+        Assert.That(fleet.Ships, Has.Exactly(1).Items);
+        Assert.That(fleet.Ships[0], Is.SameAs(ship));
     }
 
-    [Fact]
+    [Test]
     public void Constructor_TwoFleets_DoNotShareShipLists()
     {
         var first = new Fleet();
@@ -33,6 +33,6 @@ public class FleetTests
 
         first.Ships.Add(new Ship(ShipType.Cruiser));
 
-        Assert.Empty(second.Ships);
+        Assert.That(second.Ships, Is.Empty);
     }
 }

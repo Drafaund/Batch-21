@@ -27,31 +27,30 @@ public class AiGameTests
         var turns = 0;
         while (controller.GetState() == GameState.InProgress)
         {
-            Assert.True(turns < MaxTurns, "The game did not finish.");
+            Assert.That(turns < MaxTurns, Is.True, "The game did not finish.");
             controller.TakeTurn();
             turns++;
         }
 
-        Assert.NotNull(announced);
-        return (announced, turns);
+        Assert.That(announced, Is.Not.Null);
+        return (announced!, turns);
     }
 
     private static void AssertFinishedWithWinner(GameController controller, IPlayer winner)
     {
         var loser = ReferenceEquals(winner, controller.Player1) ? controller.Player2 : controller.Player1;
 
-        Assert.Equal(GameState.Finished, controller.GetState());
-        Assert.Same(winner, controller.CheckWinner());
-        Assert.Equal(0, controller.GetRemainingShips(loser));
-        Assert.True(controller.GetRemainingShips(winner) > 0);
+        Assert.That(controller.GetState(), Is.EqualTo(GameState.Finished));
+        Assert.That(controller.CheckWinner(), Is.SameAs(winner));
+        Assert.That(controller.GetRemainingShips(loser), Is.EqualTo(0));
+        Assert.That(controller.GetRemainingShips(winner) > 0, Is.True);
     }
 
-    [Theory]
-    [InlineData(1)]
-    [InlineData(2)]
-    [InlineData(3)]
-    [InlineData(4)]
-    [InlineData(5)]
+    [TestCase(1)]
+    [TestCase(2)]
+    [TestCase(3)]
+    [TestCase(4)]
+    [TestCase(5)]
     public void RandomVsRandom_PlayedToTheEnd_ProducesWinner(int seed)
     {
         var first = new RandomAIPlayer(1, "R1", new Board(), new Fleet(), new Random(seed));
@@ -63,12 +62,11 @@ public class AiGameTests
         AssertFinishedWithWinner(controller, winner);
     }
 
-    [Theory]
-    [InlineData(1)]
-    [InlineData(2)]
-    [InlineData(3)]
-    [InlineData(4)]
-    [InlineData(5)]
+    [TestCase(1)]
+    [TestCase(2)]
+    [TestCase(3)]
+    [TestCase(4)]
+    [TestCase(5)]
     public void HuntTargetVsHuntTarget_PlayedToTheEnd_ProducesWinner(int seed)
     {
         var first = new HuntTargetAIPlayer(1, "H1", new Board(), new Fleet(), new Random(seed));
@@ -80,10 +78,9 @@ public class AiGameTests
         AssertFinishedWithWinner(controller, winner);
     }
 
-    [Theory]
-    [InlineData(1)]
-    [InlineData(2)]
-    [InlineData(3)]
+    [TestCase(1)]
+    [TestCase(2)]
+    [TestCase(3)]
     public void RandomVsHuntTarget_PlayedToTheEnd_ProducesWinner(int seed)
     {
         var first = new RandomAIPlayer(1, "R", new Board(), new Fleet(), new Random(seed));
@@ -95,7 +92,7 @@ public class AiGameTests
         AssertFinishedWithWinner(controller, winner);
     }
 
-    [Fact]
+    [Test]
     public void AiVsAi_FullGame_RaisesShotEventForEveryTurnAndEndsOnce()
     {
         var first = new HuntTargetAIPlayer(1, "H1", new Board(), new Fleet(), new Random(8));
@@ -105,7 +102,7 @@ public class AiGameTests
         var ended = 0;
         controller.OnShotResolved += (_, _, result) =>
         {
-            Assert.NotEqual(ShotResult.Invalid, result);
+            Assert.That(result, Is.Not.EqualTo(ShotResult.Invalid));
             shots++;
         };
         controller.OnGameEnded += _ => ended++;
@@ -117,11 +114,11 @@ public class AiGameTests
             turns++;
         }
 
-        Assert.Equal(turns, shots);
-        Assert.Equal(1, ended);
+        Assert.That(shots, Is.EqualTo(turns));
+        Assert.That(ended, Is.EqualTo(1));
     }
 
-    [Fact]
+    [Test]
     public void AiVsAi_SameSeeds_PlayTheSameGame()
     {
         (string Winner, int Turns) Play()
@@ -132,10 +129,10 @@ public class AiGameTests
             return (winner.Name, turns);
         }
 
-        Assert.Equal(Play(), Play());
+        Assert.That(Play(), Is.EqualTo(Play()));
     }
 
-    [Fact]
+    [Test]
     public void ShotsNeededToSinkFleet_HuntTargetNeedsFewerOnAverageThanRandom()
     {
         const int games = 100;
@@ -167,6 +164,6 @@ public class AiGameTests
         var random = Average(r => new RandomAIPlayer(1, "R", new Board(), new Fleet(), r));
         var hunt = Average(r => new HuntTargetAIPlayer(1, "H", new Board(), new Fleet(), r));
 
-        Assert.True(hunt < random, $"HuntTarget averaged {hunt:F1} shots, Random averaged {random:F1}.");
+        Assert.That(hunt < random, Is.True, $"HuntTarget averaged {hunt:F1} shots, Random averaged {random:F1}.");
     }
 }

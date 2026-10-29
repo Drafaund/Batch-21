@@ -2,44 +2,44 @@ namespace Battleship.Api.Tests;
 
 public class ResultTests
 {
-    [Fact]
+    [Test]
     public void Success_HasNoError()
     {
         var result = Result.Success();
 
-        Assert.True(result.IsSuccess);
-        Assert.False(result.IsFailure);
-        Assert.Throws<InvalidOperationException>(() => result.Error);
+        Assert.That(result.IsSuccess, Is.True);
+        Assert.That(result.IsFailure, Is.False);
+        Assert.That(() => result.Error, Throws.InvalidOperationException);
     }
 
-    [Fact]
+    [Test]
     public void ImplicitFromValue_IsASuccessCarryingThatValue()
     {
         Result<int> result = 42;
 
-        Assert.True(result.IsSuccess);
-        Assert.Equal(42, result.Value);
+        Assert.That(result.IsSuccess, Is.True);
+        Assert.That(result.Value, Is.EqualTo(42));
     }
 
-    [Fact]
+    [Test]
     public void ImplicitFromError_IsAFailureWithoutAValue()
     {
         Result<int> result = Error.Conflict("nope");
 
-        Assert.True(result.IsFailure);
-        Assert.Equal(new Error(ErrorType.Conflict, "nope"), result.Error);
-        Assert.Throws<InvalidOperationException>(() => result.Value);
+        Assert.That(result.IsFailure, Is.True);
+        Assert.That(result.Error, Is.EqualTo(new Error(ErrorType.Conflict, "nope")));
+        Assert.That(() => result.Value, Throws.InvalidOperationException);
     }
 
-    [Fact]
+    [Test]
     public void Map_OnSuccess_TransformsTheValue()
     {
         Result<int> result = 2;
 
-        Assert.Equal("2!", result.Map(value => $"{value}!").Value);
+        Assert.That(result.Map(value => $"{value}!").Value, Is.EqualTo("2!"));
     }
 
-    [Fact]
+    [Test]
     public void Map_OnFailure_KeepsTheErrorAndSkipsTheFunction()
     {
         Result<int> result = Error.NotFound("gone");
@@ -51,21 +51,21 @@ public class ResultTests
             return value;
         });
 
-        Assert.False(called);
-        Assert.Equal(ErrorType.NotFound, mapped.Error.Type);
+        Assert.That(called, Is.False);
+        Assert.That(mapped.Error.Type, Is.EqualTo(ErrorType.NotFound));
     }
 
-    [Fact]
+    [Test]
     public void Bind_OnSuccess_ReturnsTheNextResult()
     {
         Result<int> result = 2;
 
         var next = result.Bind<string>(value => value > 1 ? "big" : Error.Validation("small"));
 
-        Assert.Equal("big", next.Value);
+        Assert.That(next.Value, Is.EqualTo("big"));
     }
 
-    [Fact]
+    [Test]
     public void Bind_OnFailure_KeepsTheFirstErrorAndSkipsTheFunction()
     {
         Result<int> result = Error.Unauthorized("who");
@@ -77,7 +77,7 @@ public class ResultTests
             return "never";
         });
 
-        Assert.False(called);
-        Assert.Equal(ErrorType.Unauthorized, next.Error.Type);
+        Assert.That(called, Is.False);
+        Assert.That(next.Error.Type, Is.EqualTo(ErrorType.Unauthorized));
     }
 }

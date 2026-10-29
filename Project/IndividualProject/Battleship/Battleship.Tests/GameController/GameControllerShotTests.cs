@@ -4,18 +4,18 @@ using Battleship.Core;
 
 public class GameControllerShotTests
 {
-    [Fact]
+    [Test]
     public void ProcessShot_EmptyCell_ReturnsMissAndMarksCell()
     {
         var game = new TestGame().Started();
 
         var result = game.Controller.ProcessShot(game.Player1, new Coordinate(9, 9));
 
-        Assert.Equal(ShotResult.Miss, result);
-        Assert.Equal(CellState.Miss, game.Player2.Board.Cells[9, 9].State);
+        Assert.That(result, Is.EqualTo(ShotResult.Miss));
+        Assert.That(game.Player2.Board.Cells[9, 9].State, Is.EqualTo(CellState.Miss));
     }
 
-    [Fact]
+    [Test]
     public void ProcessShot_ShipCell_ReturnsHitMarksCellAndCountsHit()
     {
         var game = new TestGame().Started();
@@ -23,13 +23,13 @@ public class GameControllerShotTests
         var result = game.Controller.ProcessShot(game.Player1, new Coordinate(0, 0));
 
         var carrier = game.Player2.Fleet.Ships.Single(s => s.Type == ShipType.Carrier);
-        Assert.Equal(ShotResult.Hit, result);
-        Assert.Equal(CellState.Hit, game.Player2.Board.Cells[0, 0].State);
-        Assert.Equal(1, carrier.HitCount);
-        Assert.False(carrier.IsSunk);
+        Assert.That(result, Is.EqualTo(ShotResult.Hit));
+        Assert.That(game.Player2.Board.Cells[0, 0].State, Is.EqualTo(CellState.Hit));
+        Assert.That(carrier.HitCount, Is.EqualTo(1));
+        Assert.That(carrier.IsSunk, Is.False);
     }
 
-    [Fact]
+    [Test]
     public void ProcessShot_LastCellOfShip_ReturnsSunk()
     {
         var game = new TestGame().Started();
@@ -37,13 +37,13 @@ public class GameControllerShotTests
             .Select(c => game.Controller.ProcessShot(game.Player1, c))
             .ToList();
 
-        Assert.Equal(new[] { ShotResult.Hit, ShotResult.Sunk }, results);
+        Assert.That(results, Is.EqualTo(new[] { ShotResult.Hit, ShotResult.Sunk }));
         var destroyer = game.Player2.Fleet.Ships.Single(s => s.Type == ShipType.Destroyer);
-        Assert.True(destroyer.IsSunk);
-        Assert.Equal(CellState.Hit, game.Player2.Board.Cells[1, 4].State);
+        Assert.That(destroyer.IsSunk, Is.True);
+        Assert.That(game.Player2.Board.Cells[1, 4].State, Is.EqualTo(CellState.Hit));
     }
 
-    [Fact]
+    [Test]
     public void ProcessShot_SinkingOneShip_OtherShipsStayAfloat()
     {
         var game = new TestGame().Started();
@@ -53,11 +53,11 @@ public class GameControllerShotTests
             game.Controller.ProcessShot(game.Player1, cell);
         }
 
-        Assert.Equal(4, game.Controller.GetRemainingShips(game.Player2));
-        Assert.Equal(5, game.Controller.GetRemainingShips(game.Player1));
+        Assert.That(game.Controller.GetRemainingShips(game.Player2), Is.EqualTo(4));
+        Assert.That(game.Controller.GetRemainingShips(game.Player1), Is.EqualTo(5));
     }
 
-    [Fact]
+    [Test]
     public void ProcessShot_SameCellTwiceAfterMiss_ReturnsInvalid()
     {
         var game = new TestGame().Started();
@@ -65,11 +65,11 @@ public class GameControllerShotTests
 
         var result = game.Controller.ProcessShot(game.Player1, new Coordinate(9, 9));
 
-        Assert.Equal(ShotResult.Invalid, result);
-        Assert.Equal(CellState.Miss, game.Player2.Board.Cells[9, 9].State);
+        Assert.That(result, Is.EqualTo(ShotResult.Invalid));
+        Assert.That(game.Player2.Board.Cells[9, 9].State, Is.EqualTo(CellState.Miss));
     }
 
-    [Fact]
+    [Test]
     public void ProcessShot_SameCellTwiceAfterHit_ReturnsInvalidAndDoesNotCountTwice()
     {
         var game = new TestGame().Started();
@@ -78,11 +78,11 @@ public class GameControllerShotTests
         var result = game.Controller.ProcessShot(game.Player1, new Coordinate(0, 0));
 
         var carrier = game.Player2.Fleet.Ships.Single(s => s.Type == ShipType.Carrier);
-        Assert.Equal(ShotResult.Invalid, result);
-        Assert.Equal(1, carrier.HitCount);
+        Assert.That(result, Is.EqualTo(ShotResult.Invalid));
+        Assert.That(carrier.HitCount, Is.EqualTo(1));
     }
 
-    [Fact]
+    [Test]
     public void ProcessShot_AlreadySunkCellShotAgain_ReturnsInvalid()
     {
         var game = new TestGame().Started();
@@ -93,36 +93,35 @@ public class GameControllerShotTests
 
         var result = game.Controller.ProcessShot(game.Player1, new Coordinate(1, 4));
 
-        Assert.Equal(ShotResult.Invalid, result);
+        Assert.That(result, Is.EqualTo(ShotResult.Invalid));
     }
 
-    [Theory]
-    [InlineData(-1, 0)]
-    [InlineData(0, -1)]
-    [InlineData(10, 0)]
-    [InlineData(0, 10)]
-    [InlineData(99, 99)]
+    [TestCase(-1, 0)]
+    [TestCase(0, -1)]
+    [TestCase(10, 0)]
+    [TestCase(0, 10)]
+    [TestCase(99, 99)]
     public void ProcessShot_OutsideBoard_ReturnsInvalid(int x, int y)
     {
         var game = new TestGame().Started();
 
         var result = game.Controller.ProcessShot(game.Player1, new Coordinate(x, y));
 
-        Assert.Equal(ShotResult.Invalid, result);
+        Assert.That(result, Is.EqualTo(ShotResult.Invalid));
     }
 
-    [Fact]
+    [Test]
     public void ProcessShot_FromPlayer2_HitsPlayer1Board()
     {
         var game = new TestGame().Started();
 
         game.Controller.ProcessShot(game.Player2, new Coordinate(0, 0));
 
-        Assert.Equal(CellState.Hit, game.Player1.Board.Cells[0, 0].State);
-        Assert.Equal(CellState.Ship, game.Player2.Board.Cells[0, 0].State);
+        Assert.That(game.Player1.Board.Cells[0, 0].State, Is.EqualTo(CellState.Hit));
+        Assert.That(game.Player2.Board.Cells[0, 0].State, Is.EqualTo(CellState.Ship));
     }
 
-    [Fact]
+    [Test]
     public void ProcessShot_Fired_RaisesOnShotResolvedWithShooterTargetAndResult()
     {
         var game = new TestGame().Started();
@@ -132,16 +131,16 @@ public class GameControllerShotTests
         game.Controller.ProcessShot(game.Player1, new Coordinate(0, 0));
         game.Controller.ProcessShot(game.Player2, new Coordinate(9, 9));
 
-        Assert.Equal(2, calls.Count);
-        Assert.Same(game.Player1, calls[0].Shooter);
-        Assert.Equal(new Coordinate(0, 0), calls[0].Target);
-        Assert.Equal(ShotResult.Hit, calls[0].Result);
-        Assert.Same(game.Player2, calls[1].Shooter);
-        Assert.Equal(new Coordinate(9, 9), calls[1].Target);
-        Assert.Equal(ShotResult.Miss, calls[1].Result);
+        Assert.That(calls.Count, Is.EqualTo(2));
+        Assert.That(calls[0].Shooter, Is.SameAs(game.Player1));
+        Assert.That(calls[0].Target, Is.EqualTo(new Coordinate(0, 0)));
+        Assert.That(calls[0].Result, Is.EqualTo(ShotResult.Hit));
+        Assert.That(calls[1].Shooter, Is.SameAs(game.Player2));
+        Assert.That(calls[1].Target, Is.EqualTo(new Coordinate(9, 9)));
+        Assert.That(calls[1].Result, Is.EqualTo(ShotResult.Miss));
     }
 
-    [Fact]
+    [Test]
     public void ProcessShot_Invalid_StillRaisesOnShotResolved()
     {
         var game = new TestGame().Started();
@@ -150,10 +149,10 @@ public class GameControllerShotTests
 
         game.Controller.ProcessShot(game.Player1, new Coordinate(-1, -1));
 
-        Assert.Equal(ShotResult.Invalid, seen);
+        Assert.That(seen, Is.EqualTo(ShotResult.Invalid));
     }
 
-    [Fact]
+    [Test]
     public void ProcessShot_SunkShip_RaisesOnShotResolvedWithSunk()
     {
         var game = new TestGame().Started();
@@ -165,10 +164,10 @@ public class GameControllerShotTests
             game.Controller.ProcessShot(game.Player1, cell);
         }
 
-        Assert.Equal(new[] { ShotResult.Hit, ShotResult.Sunk }, results);
+        Assert.That(results, Is.EqualTo(new[] { ShotResult.Hit, ShotResult.Sunk }));
     }
 
-    [Fact]
+    [Test]
     public void ProcessShot_GameNotStarted_Throws()
     {
         var game = new TestGame();
@@ -176,7 +175,7 @@ public class GameControllerShotTests
         Assert.Throws<InvalidOperationException>(() => game.Controller.ProcessShot(game.Player1, new Coordinate(0, 0)));
     }
 
-    [Fact]
+    [Test]
     public void ProcessShot_ShooterNotInGame_Throws()
     {
         var game = new TestGame().Started();
@@ -184,20 +183,20 @@ public class GameControllerShotTests
         Assert.Throws<ArgumentException>(() => game.Controller.ProcessShot(new FakePlayer(3, "Stranger"), new Coordinate(0, 0)));
     }
 
-    [Fact]
+    [Test]
     public void GetRemainingShips_BeforePlacement_IsZero()
     {
         var game = new TestGame();
 
-        Assert.Equal(0, game.Controller.GetRemainingShips(game.Player1));
+        Assert.That(game.Controller.GetRemainingShips(game.Player1), Is.EqualTo(0));
     }
 
-    [Fact]
+    [Test]
     public void GetRemainingShips_FullFleet_IsFive()
     {
         var game = new TestGame().Started();
 
-        Assert.Equal(5, game.Controller.GetRemainingShips(game.Player1));
-        Assert.Equal(5, game.Controller.GetRemainingShips(game.Player2));
+        Assert.That(game.Controller.GetRemainingShips(game.Player1), Is.EqualTo(5));
+        Assert.That(game.Controller.GetRemainingShips(game.Player2), Is.EqualTo(5));
     }
 }

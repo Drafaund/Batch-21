@@ -1,8 +1,9 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Logging;
+using Serilog.Core;
 
 namespace Battleship.Api.Tests;
 
@@ -24,11 +25,16 @@ public class ApiFactory : WebApplicationFactory<Program>
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        builder.UseEnvironment("Testing");
+        builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Serilog:WriteTo:1:Args:restrictedToMinimumLevel"] = "Fatal",
+        }));
         builder.ConfigureServices(services =>
         {
             services.RemoveAll<Func<Random>>();
             services.AddSingleton<Func<Random>>(_ => () => new Random(Interlocked.Increment(ref _seed)));
-            services.AddSingleton<ILoggerProvider>(Logs);
+            services.AddSingleton<ILogEventSink>(Logs);
         });
     }
 }
