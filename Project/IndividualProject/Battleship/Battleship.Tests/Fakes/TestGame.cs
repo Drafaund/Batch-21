@@ -4,12 +4,14 @@ using Battleship.Core;
 
 public class TestGame
 {
+    private const int DefaultBoardSize = 10;
+
     public static readonly ShipType[] AllTypes = Enum.GetValues<ShipType>();
 
-    public TestGame(FakeShotStrategy? strategy1 = null, FakeShotStrategy? strategy2 = null)
+    public TestGame(FakeShotStrategy? strategy1 = null, FakeShotStrategy? strategy2 = null, int boardSize = DefaultBoardSize)
     {
-        Player1 = new FakePlayer(1, "One");
-        Player2 = new FakePlayer(2, "Two");
+        Player1 = NewPlayer(1, "One", boardSize);
+        Player2 = NewPlayer(2, "Two", boardSize);
         Strategy1 = strategy1 ?? new FakeShotStrategy();
         Strategy2 = strategy2 ?? new FakeShotStrategy();
         Controller = new GameController(Player1, Strategy1, Player2, Strategy2);
@@ -22,6 +24,13 @@ public class TestGame
     public GameController Controller { get; }
 
     public static int RowOf(ShipType type) => (int)type;
+
+    private static FakePlayer NewPlayer(int id, string name, int boardSize)
+    {
+        return boardSize == DefaultBoardSize
+            ? new FakePlayer(id, name)
+            : new FakePlayer(id, name, new SizedBoard(boardSize));
+    }
 
     public static IEnumerable<Coordinate> CellsOf(ShipType type)
     {

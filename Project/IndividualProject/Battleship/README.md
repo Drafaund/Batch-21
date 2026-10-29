@@ -134,12 +134,12 @@ Both apps log with [Serilog](https://serilog.net). Our own code calls `Serilog.I
 dotnet test Battleship.Tests
 ```
 
-178 test cases (143 test methods; a method with several `[TestCase]` attributes runs once per case), all passing:
+212 test cases (166 test methods; a method with several `[TestCase]` attributes runs once per case), all passing:
 
 | Area | Test methods |
 |---|---|
 | `Ship`, `Cell`, `Board`, `Fleet` | 20 |
-| `GameController` (setup, random placement, shots, turns, end of game) | 90 |
+| `GameController` (setup, random placement, shots, turns, end of game) | 124 |
 | `HumanPlayer`, `RandomAIPlayer`, `HuntTargetAIPlayer` | 27 |
 | Full AI games (Random vs Random, Hunt vs Hunt, mixed) and the bot comparison | 6 |
 

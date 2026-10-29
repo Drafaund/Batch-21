@@ -110,4 +110,16 @@ public class GameControllerEndGameTests
 
         Assert.Throws<ArgumentException>(() => game.Controller.EndGame(new FakePlayer(3, "Stranger")));
     }
+
+    [Test]
+    public void EndGame_NullWinner_ThrowsAndStaysInProgress()
+    {
+        var game = new TestGame().Started();
+        var count = 0;
+        game.Controller.OnGameEnded += _ => count++;
+
+        Assert.Throws<ArgumentNullException>(() => game.Controller.EndGame(null!));
+        Assert.That(game.Controller.GetState(), Is.EqualTo(GameState.InProgress));
+        Assert.That(count, Is.EqualTo(0));
+    }
 }

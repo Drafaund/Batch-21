@@ -184,6 +184,14 @@ public class GameControllerShotTests
     }
 
     [Test]
+    public void ProcessShot_NullShooter_Throws()
+    {
+        var game = new TestGame().Started();
+
+        Assert.Throws<ArgumentNullException>(() => game.Controller.ProcessShot(null!, new Coordinate(0, 0)));
+    }
+
+    [Test]
     public void GetRemainingShips_BeforePlacement_IsZero()
     {
         var game = new TestGame();
@@ -198,5 +206,13 @@ public class GameControllerShotTests
 
         Assert.That(game.Controller.GetRemainingShips(game.Player1), Is.EqualTo(5));
         Assert.That(game.Controller.GetRemainingShips(game.Player2), Is.EqualTo(5));
+    }
+
+    [Test]
+    public void GetRemainingShips_NullPlayer_Throws()
+    {
+        var game = new TestGame().Started();
+
+        Assert.Throws<ArgumentNullException>(() => game.Controller.GetRemainingShips(null!));
     }
 }

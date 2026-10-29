@@ -100,6 +100,50 @@ public class GameControllerRandomPlacementTests
         Assert.Throws<ArgumentNullException>(() => game.Controller.PlaceShipsRandomly(game.Player1, NewShips(), null!));
     }
 
+    [Test]
+    public void PlaceShipsRandomly_NullPlayer_Throws()
+    {
+        var game = new TestGame();
+
+        Assert.Throws<ArgumentNullException>(() => game.Controller.PlaceShipsRandomly(null!, NewShips(), new Random(1)));
+    }
+
+    [Test]
+    public void PlaceShipsRandomly_PlayerNotInGame_ThrowsAndPlacesNothing()
+    {
+        var game = new TestGame();
+        var stranger = new FakePlayer(3, "Stranger");
+
+        Assert.Throws<ArgumentException>(() => game.Controller.PlaceShipsRandomly(stranger, NewShips(), new Random(1)));
+        Assert.That(stranger.Fleet.Ships, Is.Empty);
+        Assert.That(game.Player1.Fleet.Ships, Is.Empty);
+        Assert.That(game.Player2.Fleet.Ships, Is.Empty);
+    }
+
+    [Test]
+    public void PlaceShipsRandomly_GameAlreadyStarted_ThrowsAndAddsNoShips()
+    {
+        var game = new TestGame().Started();
+
+        Assert.Throws<InvalidOperationException>(() =>
+            game.Controller.PlaceShipsRandomly(game.Player1, NewShips(), new Random(1)));
+
+        Assert.That(game.Player1.Fleet.Ships, Has.Count.EqualTo(5));
+    }
+
+    [Test]
+    public void PlaceShipsRandomly_ShipLongerThanBoard_ThrowsNamingTheShipAndPlacesNothing()
+    {
+        var game = new TestGame(boardSize: 4);
+
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            game.Controller.PlaceShipsRandomly(game.Player1, new IShip[] { new Ship(ShipType.Carrier) }, new Random(1)));
+
+        Assert.That(exception!.Message, Does.Contain("Carrier"));
+        Assert.That(game.Player1.Fleet.Ships, Is.Empty);
+        Assert.That(game.Player1.Board.Cells.Cast<ICell>().Any(c => c.IsOccupied), Is.False);
+    }
+
     private static string Describe(IPlayer player)
     {
         return string.Join(";", player.Fleet.Ships.Select(ship =>

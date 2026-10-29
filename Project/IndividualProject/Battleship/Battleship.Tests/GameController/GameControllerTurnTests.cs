@@ -173,6 +173,40 @@ public class GameControllerTurnTests
     }
 
     [Test]
+    public void TakeTurn_Player2SinksLastEnemyShip_EndsGameWithPlayer2AsWinnerAndKeepsTurn()
+    {
+        var player1Misses = Enumerable.Range(0, 10).Select(x => new Coordinate(x, 9))
+            .Concat(Enumerable.Range(0, 7).Select(x => new Coordinate(x, 8)))
+            .ToArray();
+        var player2Targets = Enum.GetValues<ShipType>().SelectMany(TestGame.CellsOf).ToArray();
+        var game = new TestGame(new FakeShotStrategy(player1Misses), new FakeShotStrategy(player2Targets)).Started();
+        IPlayer? winner = null;
+        var endedCount = 0;
+        game.Controller.OnGameEnded += w =>
+        {
+            winner = w;
+            endedCount++;
+        };
+
+        ShotResult last = ShotResult.Invalid;
+        var turns = 0;
+        while (game.Controller.GetState() == GameState.InProgress)
+        {
+            last = game.Controller.TakeTurn();
+            turns++;
+        }
+
+        Assert.That(turns, Is.EqualTo(34));
+        Assert.That(last, Is.EqualTo(ShotResult.Sunk));
+        Assert.That(game.Controller.GetState(), Is.EqualTo(GameState.Finished));
+        Assert.That(winner, Is.SameAs(game.Player2));
+        Assert.That(endedCount, Is.EqualTo(1));
+        Assert.That(game.Controller.GetRemainingShips(game.Player1), Is.EqualTo(0));
+        Assert.That(game.Controller.GetRemainingShips(game.Player2), Is.EqualTo(5));
+        Assert.That(game.Controller.GetCurrentPlayer(), Is.SameAs(game.Player2));
+    }
+
+    [Test]
     public void TakeTurn_AfterGameEnded_Throws()
     {
         var game = new TestGame().Started();

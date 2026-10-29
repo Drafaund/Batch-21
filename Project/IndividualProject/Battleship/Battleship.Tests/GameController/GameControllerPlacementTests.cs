@@ -128,6 +128,17 @@ public class GameControllerPlacementTests
     }
 
     [Test]
+    public void ValidatePlaceShip_NullArguments_Throw()
+    {
+        var game = new TestGame();
+
+        Assert.Throws<ArgumentNullException>(() =>
+            game.Controller.ValidatePlaceShip(null!, new Ship(ShipType.Carrier), new Coordinate(0, 0), Orientation.Horizontal));
+        Assert.Throws<ArgumentNullException>(() =>
+            game.Controller.ValidatePlaceShip(game.Player1, null!, new Coordinate(0, 0), Orientation.Horizontal));
+    }
+
+    [Test]
     public void PlaceShip_ValidHorizontal_FillsPositionsAndOrientation()
     {
         var game = new TestGame();
@@ -198,6 +209,32 @@ public class GameControllerPlacementTests
         Assert.That(ship.Positions, Is.Empty);
         Assert.That(game.Player1.Fleet.Ships, Is.Empty);
         Assert.That(game.Player1.Board.Cells.Cast<ICell>().Any(c => c.IsOccupied), Is.False);
+    }
+
+    [Test]
+    public void PlaceShip_NullArguments_ThrowAndChangeNothing()
+    {
+        var game = new TestGame();
+
+        Assert.Throws<ArgumentNullException>(() =>
+            game.Controller.PlaceShip(null!, new Ship(ShipType.Carrier), new Coordinate(0, 0), Orientation.Horizontal));
+        Assert.Throws<ArgumentNullException>(() =>
+            game.Controller.PlaceShip(game.Player1, null!, new Coordinate(0, 0), Orientation.Horizontal));
+        Assert.That(game.Player1.Fleet.Ships, Is.Empty);
+        Assert.That(game.Player1.Board.Cells.Cast<ICell>().Any(c => c.IsOccupied), Is.False);
+    }
+
+    [Test]
+    public void PlaceShip_PlayerNotInGame_ThrowsAndChangesNothing()
+    {
+        var game = new TestGame();
+        var stranger = new FakePlayer(3, "Stranger");
+        var ship = new Ship(ShipType.Carrier);
+
+        Assert.Throws<ArgumentException>(() =>
+            game.Controller.PlaceShip(stranger, ship, new Coordinate(0, 0), Orientation.Horizontal));
+        Assert.That(ship.Positions, Is.Empty);
+        Assert.That(stranger.Fleet.Ships, Is.Empty);
     }
 
     [Test]

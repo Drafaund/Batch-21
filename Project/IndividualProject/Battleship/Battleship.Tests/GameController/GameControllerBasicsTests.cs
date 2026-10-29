@@ -94,6 +94,15 @@ public class GameControllerBasicsTests
     }
 
     [Test]
+    public void GetBoardAndGetFleet_NullPlayer_Throw()
+    {
+        var game = new TestGame();
+
+        Assert.Throws<ArgumentNullException>(() => game.Controller.GetBoard(null!));
+        Assert.Throws<ArgumentNullException>(() => game.Controller.GetFleet(null!));
+    }
+
+    [Test]
     public void SwitchTurn_Called_AlternatesCurrentPlayer()
     {
         var game = new TestGame();
