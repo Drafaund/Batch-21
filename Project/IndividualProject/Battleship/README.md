@@ -139,11 +139,13 @@ dotnet test Battleship.Tests
 | Area | Test methods |
 |---|---|
 | `Ship`, `Cell`, `Board`, `Fleet` | 20 |
-| `GameController` (setup, random placement, shots, turns, end of game) | 124 |
+| `GameController` (setup, random placement, shots, turns, end of game) | 113 |
 | `HumanPlayer`, `RandomAIPlayer`, `HuntTargetAIPlayer` | 27 |
 | Full AI games (Random vs Random, Hunt vs Hunt, mixed) and the bot comparison | 6 |
 
-Coverage of `Battleship.Core` (from `dotnet test Battleship.Tests --collect:"XPlat Code Coverage"`): **100% of lines and 100% of branches**. `Battleship.Console` has no automated tests; it was checked by playing all three modes.
+Coverage of `GameController`, measured only by the tests in `Battleship.Tests/GameController` (141 cases): **100% of lines (207 of 207), 100% of branches (72 of 72), 100% of methods**. Run `./coverage-gamecontroller.ps1` for the numbers and a per-line HTML report in `coverage/gamecontroller/index.html`. Coverage says which lines run, not that every case is checked; the edge cases are listed in `GameControllerEdgeCaseTests`.
+
+Coverage of `Battleship.Core` as a whole (from `dotnet test Battleship.Tests --collect:"XPlat Code Coverage"`): **100% of lines and 100% of branches**. `Battleship.Console` has no automated tests; it was checked by playing all three modes.
 
 ### API tests
 
